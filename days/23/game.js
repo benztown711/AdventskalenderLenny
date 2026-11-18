@@ -102,7 +102,7 @@ export default {
     }
 
     // ---------- Licht ----------
-    const radius = () => 66 + 70 * oil + (boost > 0 ? 50 * Math.min(1, boost / 1.5) : 0) + Math.sin(time * 9) * 1.6;
+    const radius = () => 78 + 70 * oil + (boost > 0 ? 50 * Math.min(1, boost / 1.5) : 0) + Math.sin(time * 9) * 1.6;
     function computeLit(R) {
       litSet.fill(0);
       const ptx = Math.floor(P.x / T), pty = Math.floor(P.y / T), lim = R + T * 0.6;
@@ -257,7 +257,7 @@ export default {
     function camTarget() {
       const mw = M.tw * T, mh = M.th * T;
       const tx = mw <= VW ? (mw - VW) / 2 : Math.max(0, Math.min(mw - VW, P.x - VW / 2));
-      const ty = mh <= VH ? (mh - VH) / 2 : Math.max(0, Math.min(mh - VH, P.y - VH * 0.48));
+      const ty = mh <= VH ? (mh - VH) / 2 : Math.max(-36, Math.min(mh - VH + 4, P.y - VH * 0.48));
       return { x: tx, y: ty };
     }
     function snapCam() { cam = camTarget(); }
@@ -362,7 +362,7 @@ export default {
       for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
         const id = ty * M.tw + tx, isLit = litSet[id] === 1;
         if (litMode ? !isLit : (isLit || !seen[id])) continue;
-        if (!litMode) c.globalAlpha = 0.24;
+        if (!litMode) c.globalAlpha = 0.4;
         if (M.grid[id] === 2) drawDoorTile(c, tx, ty); else drawTile(c, tx, ty, litMode);
         if (litMode) { const ow = M.oneMap.get(id); if (ow) drawOneway(c, ow); }
         if (!litMode) c.globalAlpha = 1;
