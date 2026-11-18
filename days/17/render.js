@@ -121,7 +121,7 @@ function bgLayers(th) {
     if (th === 'wald') {
       for (let x = 0; x < W; x++) {
         const h = 60 + 34 * Math.sin(x / 47) + 22 * Math.sin(x / 19 + 1) + 10 * Math.sin(x / 7);
-        g.fillStyle = '#18225a'; g.fillRect(x, 160 - h, 1, h);
+        g.fillStyle = '#121a48'; g.fillRect(x, 160 - h, 1, h);
         g.fillStyle = '#9fb3e0'; g.fillRect(x, 160 - h, 1, 3);
       }
     } else {

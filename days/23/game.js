@@ -38,7 +38,7 @@ export default {
       keyObjs = M.keys.map(c => ({ c, x: cx2x(c), y: cy2y(c), got: false, ph: rnd(0, 6) }));
       candleObjs = M.candles.map(c => ({ c, x: cx2x(c), y: cy2y(c), got: false, ph: rnd(0, 6) }));
       wormObjs = M.worms.map(c => ({ c, x: cx2x(c), y: cy2y(c), got: false, ph: rnd(0, 6) }));
-      mouseObjs = M.mice.map(c => ({ c, x: cx2x(c), y: cy2y(c), st: 'eyes', ph: rnd(0, 6), steps: 0, to: null, prev: -1, a: 1, ang: 0 }));
+      mouseObjs = M.mice.map(c => ({ c, x: cx2x(c), y: cy2y(c), st: 'eyes', ph: rnd(0, 6), steps: 0, to: -1, wait: 0, prev: -1, a: 1, ang: 0 }));
       ghostObjs = M.ghosts.map(c => ({ c, x: cx2x(c), y: cy2y(c), to: -1, prev: -1, wait: rnd(0.3, 1.2), ph: rnd(0, 6), speed: 30 + li * 4 }));
       chims = M.chimneys ? M.chimneys.map(c => ({ c, x: cx2x(c), y: cy2y(c) })) : [];
       parts = []; oil = 1; boost = 0; hintT = 0; hintPath = []; hintCool = 0; lt = 0; grace = 2.6; inv = 0;

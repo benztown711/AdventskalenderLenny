@@ -310,7 +310,7 @@ export default {
         const a = Math.max(0, Math.min(1, endT * 1.5 - i * 0.35));
         if (!a) return;
         g.globalAlpha = a;
-        txt(l, VW / 2, 30 + i * 20 + (1 - a) * 10, { s: 2, c: i === 0 ? '#ffd166' : i === 7 ? '#ef476f' : '#ffffff', al: 'center' });
+        txt(l, VW / 2, 22 + i * 18 + (1 - a) * 10, { s: 2, c: i === 0 ? '#ffd166' : i === 7 ? '#ef476f' : '#ffffff', al: 'center' });
       });
       g.globalAlpha = 1;
       if (endT > 2.5) txt(ctx.input.isTouch ? 'TIPPEN = ENDE' : 'LEERTASTE = ENDE', VW / 2, VH - 22, { s: 1, c: Math.sin(t * 5) > 0 ? '#1a1030' : '#5b6280', al: 'center', sh: null });
