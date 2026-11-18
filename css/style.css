@@ -106,3 +106,4 @@ body.in-game { overflow: hidden; }
 .stars .on { display: inline-block; color: var(--gold); text-shadow: 0 0 22px rgba(255, 209, 102, .8); animation: star .5s cubic-bezier(.2, 1.8, .4, 1) backwards; }
 @keyframes star { from { transform: scale(0) rotate(-180deg); } }
 @media (prefers-reduced-motion: reduce) { .door.ready { animation: none; } }
+@media (max-width: 520px) { .hud { gap: 4px; } .hud .chip { font-size: 12px; padding: 2px 7px; gap: 3px; } .icon-btn { width: 36px; height: 36px; } .bar { gap: 5px; padding: 5px 6px; } }
