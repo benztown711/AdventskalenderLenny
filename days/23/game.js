@@ -102,7 +102,7 @@ export default {
     }
 
     // ---------- Licht ----------
-    const radius = () => 78 + 70 * oil + (boost > 0 ? 50 * Math.min(1, boost / 1.5) : 0) + Math.sin(time * 9) * 1.6;
+    const radius = () => 100 + 70 * oil + (boost > 0 ? 50 * Math.min(1, boost / 1.5) : 0) + Math.sin(time * 9) * 1.6;
     function computeLit(R) {
       litSet.fill(0);
       const ptx = Math.floor(P.x / T), pty = Math.floor(P.y / T), lim = R + T * 0.6;
@@ -388,13 +388,13 @@ export default {
       const sx = P.x - cx, sy = P.y - cy;
       lg.globalCompositeOperation = 'destination-in';
       const gr = lg.createRadialGradient(sx, sy, R * 0.12, sx, sy, R);
-      gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.55, 'rgba(0,0,0,.9)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.7, 'rgba(0,0,0,.85)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
       lg.fillStyle = gr; lg.fillRect(0, 0, VW, VH); lg.globalCompositeOperation = 'source-over';
       g.drawImage(litC, 0, 0, VW, VH);
       // Warmer Schein
       g.globalCompositeOperation = 'lighter';
       const wg = g.createRadialGradient(sx, sy, 0, sx, sy, R * 0.9);
-      wg.addColorStop(0, 'rgba(255,190,90,.2)'); wg.addColorStop(1, 'rgba(255,190,90,0)');
+      wg.addColorStop(0, 'rgba(255,190,90,.14)'); wg.addColorStop(1, 'rgba(255,190,90,0)');
       g.fillStyle = wg; g.fillRect(0, 0, VW, VH); g.globalCompositeOperation = 'source-over';
 
       g.save(); g.translate(-cx, -cy);
@@ -489,7 +489,7 @@ export default {
       g.beginPath(); g.moveTo(mx + 8, my); g.lineTo(mx + 8, my + 18); g.moveTo(mx + 16, my + 4); g.lineTo(mx + 16, my + 22); g.stroke();
     }
     function drawMap() {
-      g.fillStyle = 'rgba(4,6,26,.93)'; g.fillRect(0, 0, VW, VH);
+      g.fillStyle = 'rgba(4,6,26,.97)'; g.fillRect(0, 0, VW, VH);
       const s = Math.floor(Math.min(330 / M.tw, 440 / M.th)), ox = Math.floor((VW - s * M.tw) / 2), oy = 70 + Math.floor((440 - s * M.th) / 2);
       g.fillStyle = '#ffd166'; g.font = 'bold 16px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText('Karte – schon erkundet', VW / 2, 40);
