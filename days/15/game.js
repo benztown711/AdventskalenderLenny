@@ -192,7 +192,7 @@ export default {
       if (rel < 0) { ball.vx -= (1 + e) * rel * nx; ball.vy -= (1 + e) * rel * ny; if (-rel > 60) thud(-rel, false); }
     }
     function stepBall(h) {
-      ball.r += (ball.tr - ball.r) * Math.min(1, h * 6);
+      ball.r = clamp(ball.r + (ball.tr - ball.r) * clamp(h * 6, 0, 1), 12, 26);
       if (ball.hold) { ball.y = 100 + Math.sin(time * 3) * 3; ball.x = 280; return; }
       ball.vy += GB * h; ball.x += ball.vx * h; ball.y += ball.vy * h;
       for (const p of [P, A]) {
@@ -331,6 +331,7 @@ export default {
 
     // ---------- Update ----------
     function update(dt) {
+      dt = clamp(dt, 0, 0.05);
       time += dt;
       shake = Math.max(0, shake - dt * 16); excite = Math.max(0, excite - dt * 0.3); m.showMe -= dt;
       if (m.banner && (m.banner.t -= dt) <= 0) m.banner = null;
@@ -507,7 +508,7 @@ export default {
     }
 
     function drawBall() {
-      const r = ball.r;
+      const r = Math.max(1, ball.r);
       const hgt = Math.max(0, GY - ball.y - r);
       ell(ball.x, GY + 2, r * 0.9 * Math.max(0.4, 1 - hgt / 280), 4.5, `rgba(10,20,50,${Math.max(0.1, 0.32 - hgt / 600)})`);
       for (const t of ball.trail) { g.globalAlpha = t.l * 1.2; circ(t.x, t.y, r * 0.8 * (t.l / 0.25 + 0.3) * 0.7, '#ffffff'); }
