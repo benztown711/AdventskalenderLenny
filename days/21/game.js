@@ -18,6 +18,7 @@ const tEnd = 'G4/.75 G4/.25 G4/1.5 A4/.5 B4/.75 B4/.25 B4/1.5 B4/.5 A4/.5 B4/.5 
 const kA = 'C5/1 A4/.5 Bb4/.5 C5/.25 D5/.25 C5/.25 D5/.25 C5/1 Bb4/1 G4/.5 C5/.5 A4/2';
 const kB = 'G4/.5 G4/.5 A4/.5 F4/.5 A4/1 G4/1 Bb4/.5 Bb4/.5 C5/.5 G4/.5 Bb4/1 A4/1';
 const kC = 'G4/.5 G4/.5 A4/.5 B4/.5 C5/1 G4/1 A4/.5 D5/.5 C5/.5 B4/.5 D5/1 C5/1';
+const kChords = ['F', 'F', 'C', 'F', 'C', 'F', 'Bb', 'F', 'C', 'C', 'G', 'C', 'F', 'F', 'C', 'F'];
 const kLine = [kA, kB, kC, kA].join(' ');
 
 export const _songs = [
@@ -40,7 +41,7 @@ export const _songs = [
     cut: [69, 71, 74],  // F und G | A und B | H und C | D
     stars: [0.55, 0.75, 0.88],
     seq: kLine + ' ' + kLine,
-    chords: ['F', 'F', 'C', 'F', 'C', 'F', 'Bb', 'F', 'C', 'C', 'G', 'C', 'F', 'F', 'C', 'F'],
+    chords: [...kChords, ...kChords],
   },
 ];
 

@@ -346,7 +346,7 @@ export default {
     }
 
     function drawButton(b, i) {
-      const off = b.disabled || (b.off && b.off()), isF = focus === i && mode !== 'play' && !off;
+      const off = b.disabled || (b.off && b.off()), isF = focus === i && (mode === 'menu' || mode === 'panel') && !off;
       const press = pressed === i ? 2 : 0;
       g.save(); g.translate(0, press);
       rr(b.x, b.y, b.w, b.h, 12);
@@ -439,10 +439,10 @@ export default {
       drawBoard();
       const conn = pairs.filter((_, q) => connected(q)).length;
       let msg;
-      if (mode === 'won') msg = 'Geschafft!';
+      if (mode === 'won' || mode === 'panel' || mode === 'done') msg = 'Geschafft!';
       else if (allConnected()) msg = 'Alle verbunden - fülle noch die leeren Felder!';
       else msg = conn + ' von ' + pairs.length + ' Paaren verbunden';
-      text(msg, W / 2, 420, 15, mode === 'won' ? '#06d6a0' : '#cfe3ff');
+      text(msg, W / 2, 420, 15, msg === 'Geschafft!' ? '#06d6a0' : '#cfe3ff');
       btns.forEach(drawButton);
       if (!ctx.input.isTouch) text('Pfeile: Cursor · Leertaste: Leitung aufnehmen/ablegen · T: Tipp', W / 2, 520, 11.5, '#7f8fc4', 'center', 'normal');
       else text('Zieh von Kugel zu Kugel. Alle Felder füllen!', W / 2, 520, 12.5, '#7f8fc4', 'center', 'normal');
