@@ -126,7 +126,7 @@ export default {
     function bat(path, o = {}) { return addEnemy({ type: 'bat', hp: 2, r: 15, pts: 100, path, x: -99, y: -99, seed: Math.random() * 6, ...o }); }
     function addEnemy(o) { const e = { t: 0, hp: 2, r: 14, flash: 0, pts: 100, hittable: true, delay: 0, ...o }; e.maxHp = e.hp; enemies.push(e); return e; }
     const waveV = (xc, shoots, n = 5) => { for (let i = 0; i < n; i++) { const k = i - (n - 1) / 2; bat(t => ({ x: xc + k * 30 + Math.sin(t * 2.2) * 18, y: -30 - Math.abs(k) * 24 + t * 85 }), { shoots, shootAt: rnd(1.3, 2.6) }); } };
-    const waveSnake = (left, y0, shoots) => { for (let i = 0; i < 6; i++) bat(t => ({ x: left ? -30 + t * 115 : W + 30 - t * 115, y: y0 + Math.sin(t * 2.6) * 42 + t * 10 }), { delay: i * 0.33, shoots, shootAt: rnd(1, 2.4) }); };
+    const waveSnake = (left, y0, shoots, amp = 42) => { for (let i = 0; i < 6; i++) bat(t => ({ x: left ? -30 + t * 115 : W + 30 - t * 115, y: y0 + Math.sin(t * 2.6) * amp + t * (amp > 20 ? 10 : 0) }), { delay: i * 0.33, shoots, shootAt: rnd(1, 2.4) }); };
     const waveSwoop = (x0, dir, n = 5) => { for (let i = 0; i < n; i++) bat(t => ({ x: x0 + dir * t * 55, y: -25 + 230 * t - 70 * t * t }), { delay: i * 0.3 }); };
     const waveWall = gap => { for (let i = 0; i < 8; i++) { const x = 22 + i * 45; if (Math.abs(x - gap) < 50) continue; bat(t => ({ x: x + Math.sin(t * 2 + i) * 6, y: -25 + t * 52 }), { shoots: true, shootAt: rnd(1.6, 4.5), straight: true }); } };
     const drones = (xs, spread) => xs.forEach((x, i) => addEnemy({ type: 'drone', hp: 5, r: 16, pts: 200, x, y: -30, ty: rnd(95, 185), st: 'in', delay: i * 0.45, left: 3, cd: rnd(0.5, 1.2), charge: 0, spread }));
@@ -175,17 +175,15 @@ export default {
       eye = addEnemy({ type: 'eye', x: W / 2, y: -250, hp: 60, r: 25, pts: 3000, hittable: false, cd: 1.5, charge: 0, n: 0, act: null, big: true });
     }
     function updateP2(dt) {
-      fort.y += (0 - fort.y) * Math.min(1, dt * 1.3);
       fort.eyeFlash = Math.max(0, fort.eyeFlash - dt);
       fort.lookX = clamp((P.x - W / 2) / 120, -1, 1);
-      eye.y = fort.y + 30;
       const turrets = enemies.filter(e => e.type === 'turret');
       if (!turrets.length && !fort.open && !fort.opening) {
         fort.opening = 1.4; say('Das Tor-Auge geht auf! Jetzt drauf!', 2.6); bigShake(8); sfx('bad');
         audio.tone(90, 1.2, 'sawtooth', 0.12, 50);
       }
       if (fort.opening > 0) { fort.opening -= dt; fort.eyeOpen = clamp(1 - fort.opening / 1.4, 0, 1); if (fort.opening <= 0) { fort.open = true; eye.hittable = true; fort.eyeOpen = 1; } }
-      if ((batT -= dt) <= 0 && turrets.length && phaseT > 6) { batT = rnd(8, 11); waveSnake(Math.random() < 0.5, 290, false); }
+      if ((batT -= dt) <= 0 && turrets.length && phaseT > 6) { batT = rnd(8, 11); waveSnake(Math.random() < 0.5, 226, false, 9); }
       if ((giftT -= dt) <= 0) { giftT = rnd(5, 7); spawnGift(rnd(40, W - 40), 240); }
       if ((pwT -= dt) <= 0) { pwT = rnd(16, 20); spawnPower(rnd(60, W - 60), 240, nextPower()); }
     }
@@ -319,7 +317,6 @@ export default {
           } else if ((e.cd -= dt) <= 0) { if (e.left > 0) { e.charge = 0.8; blip(1300, 0.04, 'sine', 0.04); } else e.st = 'out'; }
         } else { e.y -= 120 * dt; if (e.y < -50) e.gone = true; }
       } else if (e.type === 'turret') {
-        e.y = fort.y + e.oy;
         let want = aimAt(e.x, e.y), diff = Math.atan2(Math.sin(want - e.aim), Math.cos(want - e.aim));
         e.aim += diff * Math.min(1, dt * 5);
         if (fort.y < -6 || phaseT < 3.2) return;
@@ -547,7 +544,11 @@ export default {
         if (phase === 1) updateP1(dt); else if (phase === 2) updateP2(dt); else updateP3(dt);
         if (lawFx > 0.4) { for (const b of ebul) if (b.type !== 'ice') b.dead = true; }
       }
-      if (fort && mode !== 'play') { fort.y += (0 - fort.y) * Math.min(1, dt * 1.3); }
+      if (fort) {
+        fort.y += (0 - fort.y) * Math.min(1, dt * 1.3);
+        for (const e of enemies) if (e.type === 'turret') e.y = fort.y + e.oy;
+        if (eye) eye.y = fort.y + 30;
+      }
       // Gegner
       if (mode === 'play' || mode === 'anim') {
         for (const e of enemies) { if (e.delay > 0) { e.delay -= dt; continue; } e.t += dt; if (mode === 'play' || e.type === 'yeti') updateEnemy(e, dt); }
@@ -623,7 +624,7 @@ export default {
       }
       const minY = phase === 2 && fort ? fort.y + 250 : phase === 3 ? 245 : 70;
       P.x = clamp(P.x, 16, W - 16); P.y = clamp(P.y, Math.max(70, minY), H - 26);
-      P.tilt += (clamp((P.x - ox) / dt / 500, -0.35, 0.35) - P.tilt) * Math.min(1, dt * 10);
+      if (dt > 0) P.tilt += (clamp((P.x - ox) / dt / 500, -0.35, 0.35) - P.tilt) * Math.min(1, dt * 10);
     }
     function updateAnim(dt) {
       const a = anim; a.t += dt;
@@ -655,7 +656,7 @@ export default {
 
     // ---------- Zeichnen ----------
     function drawBg() {
-      if (phase === 3 && mode !== 'story' || (phase === 2 && story && story.lines === TO3) || (phase === 3)) return drawHall();
+      if (phase === 3) return drawHall();
       g.fillStyle = phase === 1 ? '#122049' : '#16285a'; g.fillRect(0, 0, W, H);
       const span = H + 120;
       if (phase === 1) {
@@ -791,14 +792,15 @@ export default {
       const L = story.lines[story.i], name = NAMES[L.who];
       const bx = 10, by = H - 150, bw = W - 20, bh = 138;
       g.fillStyle = 'rgba(5,9,31,.55)'; g.fillRect(0, 0, W, H);
-      if (L.who === 'yeti' && phase <= 1 && !boss) { // der Yeti lugt herein
+      if (L.who === 'yeti' && !boss) { // der Yeti lugt herein
         g.save(); g.translate(W / 2, 170 + Math.sin(time * 2) * 6); g.scale(0.9, 0.9); A.drawYeti(g, 0, 0, time, { mood: 'angry', arms: 0.7 + Math.sin(time * 5) * 0.2 }); g.restore();
         for (let i = 0; i < 5; i++) A.drawGift(g, W / 2 - 80 + i * 40, 250 + Math.sin(time * 3 + i) * 4, 22, GIFT_COLORS[i], Math.sin(time * 2 + i) * 0.2);
       }
       g.fillStyle = 'rgba(11,20,55,.94)'; A.rr(g, bx, by, bw, bh, 16); g.fill();
-      g.strokeStyle = L.who.startsWith('yeti') ? C.ice : L.who === 'wichtel' ? C.green : C.gold; g.lineWidth = 2.5; g.stroke();
+      const nameC = L.who.startsWith('yeti') ? C.ice : L.who === 'wichtel' ? C.green : C.gold;
+      g.strokeStyle = nameC; g.lineWidth = 2.5; g.stroke();
       let tx = bx + 16;
-      if (L.who !== 'erz') { A.portrait(g, L.who, bx + 36, by + 36, time); tx = bx + 66; A.text(g, name, tx, by + 22, 14, g.strokeStyle, 'left'); }
+      if (L.who !== 'erz') { A.portrait(g, L.who, bx + 36, by + 36, time); tx = bx + 66; A.text(g, name, tx, by + 22, 14, nameC, 'left'); }
       // Text mit Umbruch
       g.font = `bold 15px ${A.FONT}`; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = '#fff';
       const shown = L.text.slice(0, Math.floor(story.ch)), words = L.text.split(' ');

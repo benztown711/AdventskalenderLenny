@@ -67,7 +67,6 @@ export function createFinale({ g, W, H, audio, music, onDone, freeAfter = 15, do
 
   function update(dt) {
     t += dt;
-    music.update(dt);
     // automatische Show
     nextAuto -= dt;
     if (nextAuto <= 0) {
