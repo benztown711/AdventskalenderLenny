@@ -6,23 +6,23 @@ const W = 360, H = 560;
 const PL = 56, PR = 304, BAR = 150, GY = 250;          // Torpfosten links/rechts, Latte, Torlinie
 const CX = 180, BX = 180, BY = 478, R0 = 22, RG = 8, ZE = 2.75;
 const SHOTS = 5;
-const STARS = [1000, 1900, 2800];
+const STARS = [1000, 1800, 2600];
 const COL = { gold: '#ffd166', red: '#ef476f', green: '#06d6a0', ice: '#8ecae6', violet: '#c77dff' };
 
 const LEVELS = [
   { name: 'Anstoß', note: 'Der Torwart wärmt sich noch auf.',
-    k: { delay: 0.42, rate: 3.6, reach: 88, smart: 0.22, err: 56, amp: 34, spd: 1.3, hr: 27 }, targets: [], obs: [] },
+    k: { delay: 0.5, rate: 3.0, reach: 70, smart: 0.15, err: 60, amp: 30, spd: 1.3, hr: 24 }, targets: [], obs: [] },
   { name: 'Aufwärmen', note: 'Der Torwart wird flinker!',
-    k: { delay: 0.36, rate: 4.4, reach: 98, smart: 0.32, err: 46, amp: 42, spd: 1.8, hr: 28 }, targets: [], obs: [] },
+    k: { delay: 0.44, rate: 3.6, reach: 84, smart: 0.25, err: 52, amp: 38, spd: 1.8, hr: 25 }, targets: [], obs: [] },
   { name: 'Zielscheiben', note: 'Triff die goldenen Zielscheiben für Extra-Punkte!',
-    k: { delay: 0.30, rate: 5.2, reach: 108, smart: 0.42, err: 38, amp: 46, spd: 2.2, hr: 29 },
+    k: { delay: 0.38, rate: 4.4, reach: 96, smart: 0.35, err: 44, amp: 44, spd: 2.2, hr: 26 },
     targets: [{ x: 86, y: 174, r: 15, pts: 200 }, { x: 274, y: 174, r: 15, pts: 200 }], obs: [] },
   { name: 'Eisblöcke', note: 'Ein Eisblock schwebt vor dem Tor. Nicht treffen!',
-    k: { delay: 0.26, rate: 6.2, reach: 118, smart: 0.52, err: 32, amp: 50, spd: 2.6, hr: 30 },
+    k: { delay: 0.32, rate: 5.2, reach: 108, smart: 0.45, err: 36, amp: 48, spd: 2.6, hr: 27 },
     targets: [{ x: 86, y: 174, r: 15, pts: 200 }, { x: 274, y: 174, r: 15, pts: 200 }],
     obs: [{ x: 130, y: 204, w: 46, h: 22, vx: 42, min: 90, max: 270 }] },
   { name: 'Das Finale', note: 'Zwei Eisblöcke, bewegliche Zielscheiben, ein Top-Torwart!',
-    k: { delay: 0.22, rate: 7.4, reach: 128, smart: 0.62, err: 27, amp: 54, spd: 3.0, hr: 31 },
+    k: { delay: 0.26, rate: 6.2, reach: 118, smart: 0.55, err: 30, amp: 52, spd: 3.0, hr: 28 },
     targets: [{ x: 86, y: 174, r: 15, pts: 200, wob: 0 }, { x: 274, y: 174, r: 15, pts: 200, wob: 2 }, { x: 180, y: 166, r: 12, pts: 300, wob: 4 }],
     obs: [{ x: 120, y: 190, w: 44, h: 20, vx: 50, min: 90, max: 270 }, { x: 240, y: 228, w: 44, h: 20, vx: -64, min: 90, max: 270 }] },
 ];

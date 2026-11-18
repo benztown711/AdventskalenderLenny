@@ -191,10 +191,10 @@ export default {
           case 'pop': {
             const y = e.y - (e.air ? 16 : 0);
             const cols = e.gold ? [C.gold, '#fff', '#ffe9a8'] : e.air ? [C.violet, '#fff', '#e8d0ff'] : ['#fff', C.ice, '#dbe8ff'];
-            burst(e.x, y, e.boss ? 80 : e.type === 'yeti' ? 26 : 14, cols, { v: e.boss ? 180 : 90, life: e.boss ? 1.2 : 0.6 });
+            burst(e.x, y, e.boss ? 80 : e.kind === 'yeti' ? 26 : 14, cols, { v: e.boss ? 180 : 90, life: e.boss ? 1.2 : 0.6 });
             rings.push({ x: e.x, y, r: 4, to: e.boss ? 90 : 22, life: 0.3, max: 0.3, c: 'rgba(255,255,255,.8)' });
             once('pop', 45, () => tone(500 + Math.random() * 300, 0.08, 'sine', 0.16, 1100));
-            if (e.gold || e.type === 'yeti' || e.boss) float(e.x, y - 14, `+${e.reward}`, C.gold, e.boss ? 20 : 13);
+            if (e.gold || e.kind === 'yeti' || e.boss) float(e.x, y - 14, `+${e.reward}`, C.gold, e.boss ? 20 : 13);
             if (e.gold) ctx.audio.sfx('coin');
             if (e.boss) { ctx.fx.shake(500); ctx.audio.sfx('boom'); float(W / 2, 200, 'Der Riesen-Yeti zerplatzt!', '#fff', 20, 2.2); music(null); }
             break;

@@ -113,7 +113,7 @@ export function createWorld(rng = Math.random) {
     enemies: [], shots: [], events: [], over: null, nextId: 1, pending: {},
   };
 }
-const ev = (w, type, data) => w.events.push({ type, ...data });
+const ev = (w, type, data) => w.events.push({ ...data, type });
 
 export function canCallWave(w) { return !w.over && w.wave < WAVES.length && w.spawnQ.length === 0; }
 export function callWave(w) {
@@ -155,7 +155,7 @@ export function build(w, spot, type) {
   if (w.money < c) return false;
   w.money -= c;
   w.towers[spot] = { type, lvl: 0, cd: 0.2, ang: -Math.PI / 2, kick: 0, spot, x: SPOTS[spot].x, y: SPOTS[spot].y, shots: 0 };
-  ev(w, 'build', { spot, type });
+  ev(w, 'build', { spot, tower: type });
   return true;
 }
 export function upgrade(w, spot) {
@@ -179,7 +179,7 @@ function hurt(w, e, dmg, src) {
     const d = ENEMIES[e.type];
     const reward = d.reward + (e.gold ? 15 : 0);
     w.money += reward; w.points += d.pts; w.kills++;
-    ev(w, 'pop', { x: e.x, y: e.y, type: e.type, reward, gold: e.gold, air: e.air, boss: e.boss });
+    ev(w, 'pop', { x: e.x, y: e.y, kind: e.type, reward, gold: e.gold, air: e.air, boss: e.boss });
   }
 }
 const inRange = (t, e, r) => (e.x - t.x) ** 2 + (e.y - t.y) ** 2 <= r * r;

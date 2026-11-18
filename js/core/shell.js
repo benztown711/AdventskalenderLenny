@@ -69,7 +69,7 @@ export async function openDay(n, view, goHome) {
         let last = performance.now(), id;
         const step = t => {
           if (s.dead) return;
-          const dt = Math.min(0.05, (t - last) / 1000); last = t;
+          const dt = Math.max(0, Math.min(0.05, (t - last) / 1000)); last = t;
           if (!s.paused) { try { fn(dt, t / 1000); } catch (e) { console.error(e); } }
           id = requestAnimationFrame(step);
         };
