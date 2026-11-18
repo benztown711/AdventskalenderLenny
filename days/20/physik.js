@@ -3,7 +3,7 @@
 
 export const RADII = [15, 20, 27, 35, 44, 54, 65, 77, 90, 104];
 export const MAXLV = RADII.length - 1;
-export const JAR = { l: 40, r: 320, floor: 500, top: 122, danger: 200 };
+export const JAR = { l: 40, r: 320, floor: 500, top: 226, danger: 250 };
 export const DANGER_SECONDS = 2.0;
 
 const G = 1500, SUB = 4, ITER = 8;

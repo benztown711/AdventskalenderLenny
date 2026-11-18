@@ -4,7 +4,7 @@ import { drawBall, NAMES, TINT } from './balls.js';
 
 export const howto = 'Lass die Deko ins Glas fallen: zwei gleiche Kugeln verschmelzen zur nächsten Stufe! Mit Maus oder Finger zielen und loslassen (Tastatur: ◀ ▶ und Leertaste). Liegt etwas zu lange über der roten Linie, ist Schluss. Einmal pro Spiel hilft „Schütteln“ (Taste B).';
 
-const W = 360, H = 560, HAND_Y = 76;
+const W = 360, H = 560, HAND_Y = 130;
 const DROP_W = [20, 24, 24, 20, 12];           // Gewichte für die Stufen 1 bis 5, die als neue Kugel kommen
 const PTS = [0, 2, 4, 8, 14, 22, 34, 50, 70, 100];
 const SEMI = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];   // Pentatonik: Ton steigt mit der Stufe

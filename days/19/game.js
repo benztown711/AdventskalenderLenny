@@ -167,7 +167,7 @@ export default {
           ctx.audio.tone(ctx.audio.midi(72 + Math.min(sc.mult, 8) * 2), 0.35, 'square', 0.14, ctx.audio.midi(84 + Math.min(sc.mult, 8) * 2), 0.18);
         } else floatText(`+${sc.points}`, cx, cy - 10, GOLD, 24);
         if (sc.lines >= 2) floatText(sc.lines === 2 ? 'Doppelt!' : sc.lines === 3 ? 'Dreifach!' : 'Mega!', cx, cy - 40, '#8ecae6', 20);
-        if (sc.starBonus) { floatText(`Stern +${sc.starBonus}`, GX + N * C / 2, GY + 30, '#fff3b0', 20, 1.4); ctx.audio.sfx('coin'); ctx.fx.emojiBurst?.('⭐'); }
+        if (sc.starBonus) { floatText(`Stern +${sc.starBonus}`, GX + N * C / 2, GY + 30, '#fff3b0', 20, 1.4); ctx.audio.sfx('coin'); }
         if (sc.emptyBonus) {
           ctx.timeout(() => { setBanner('BRETT LEER!', `+${sc.emptyBonus}`, 5); ctx.audio.sfx('level'); ctx.fx.confetti(); for (let k = 0; k < 60; k++) burst(mx, my, [GOLD, '#fff', '#8ecae6'][k % 3], 1, 300, 1.2); }, 350);
         }
@@ -337,7 +337,7 @@ export default {
         f.t += dt; const k = f.t / f.dur;
         g.globalAlpha = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1;
         g.font = `800 ${f.size}px system-ui, sans-serif`; g.lineWidth = 4; g.strokeStyle = 'rgba(11,20,55,.85)';
-        const y = f.y - k * 40; g.strokeText(f.text, f.x, y); g.fillStyle = f.color; g.fillText(f.text, f.x, y);
+        const y = f.y - k * 40; f.x = Math.max(55, Math.min(W - 55, f.x)); g.strokeText(f.text, f.x, y); g.fillStyle = f.color; g.fillText(f.text, f.x, y);
       }
       g.globalAlpha = 1;
       // COMBO-Banner
@@ -349,6 +349,7 @@ export default {
           g.save(); g.translate(W / 2, GY + N * C / 2 - 20); g.rotate(-0.06 + Math.sin(t * 8) * 0.02); g.scale(pop, pop);
           g.globalAlpha = k > 0.75 ? 1 - (k - 0.75) / 0.25 : 1;
           g.font = `900 ${sz}px system-ui, sans-serif`; g.lineJoin = 'round'; g.lineWidth = 9; g.strokeStyle = '#0b1437';
+          const tw = g.measureText(banner.text).width; if (tw > 320) { const f = 320 / tw; g.scale(f, f); }
           g.strokeText(banner.text, 0, 0);
           const gr = g.createLinearGradient(0, -sz / 2, 0, sz / 2); gr.addColorStop(0, '#fff3b0'); gr.addColorStop(1, banner.mult >= 4 ? '#ef476f' : '#ffb703');
           g.fillStyle = gr; g.fillText(banner.text, 0, 0);

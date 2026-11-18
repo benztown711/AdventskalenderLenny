@@ -131,7 +131,6 @@ export default {
       hint = { i: r.first.i, to: r.first.to, left: r.n };
       sel = r.first.i;
       ctx.audio.sfx('power');
-      ctx.toast(`Noch ${r.n} ${r.n === 1 ? 'Zug' : 'Züge'} bis zur Freiheit`, 1600);
     }
     function cycle(dir) {
       if (busy || over || mode !== 'play') return;
@@ -151,7 +150,6 @@ export default {
       s.sel = false;
       ctx.audio.sfx('power');
       ctx.fx.confetti(25 + (moves <= prof ? 35 : 0));
-      ctx.toast(moves <= prof ? `Profi! Nur ${moves} Züge!` : `Frei in ${moves} Zügen! Profi: ${prof}`, 1900);
       updateHud();
       void wasNew;
     }
@@ -525,7 +523,11 @@ export default {
       g.fillStyle = '#fff'; g.font = '800 19px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(`Level ${lvl + 1} · ${NAMES[lvl]}`, W / 2, 30);
       g.fillStyle = ICE; g.font = '600 12px system-ui, sans-serif';
-      g.fillText(lvl === 0 && !hist.length ? 'Zieh die Blöcke aus dem Weg!' : 'Bring den roten Schlitten nach rechts hinaus!', W / 2, 52);
+      const sub = exitAnim ? (exitAnim.moves <= exitAnim.prof ? `Profi! Nur ${exitAnim.moves} Züge!` : `Frei in ${exitAnim.moves} Zügen! Profi: ${exitAnim.prof}`)
+        : hint ? `Tipp: noch ${hint.left} ${hint.left === 1 ? 'Zug' : 'Züge'} · folge dem grünen Rahmen`
+        : lvl === 0 && !hist.length ? 'Zieh die Blöcke aus dem Weg!' : 'Bring den roten Schlitten nach rechts hinaus!';
+      g.fillStyle = exitAnim || hint ? (exitAnim ? GOLD : GREEN) : ICE;
+      g.fillText(sub, W / 2, 52);
       drawVehicles();
       // Info unter dem Hof
       const bm = bestMoves[lvl];
