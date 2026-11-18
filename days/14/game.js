@@ -55,11 +55,10 @@ export default {
       hist = []; sel = -1; drag = null; hint = null; busy = false; exitAnim = null; bumps = {};
       sel = 0;
       updateHud();
-      if (i === 0) ctx.timeout(() => { if (mode === 'play' && lvl === 0 && !hist.length) ctx.toast('Zieh die Blöcke aus dem Weg!', 2200); }, 400);
     }
     function updateHud() {
       if (mode === 'select') ctx.hud.set({ 'Gelöst': `${solvedCount()}/${LEVELS.length}` });
-      else ctx.hud.set({ Level: lvl + 1, 'Züge': hist.length, 'Profi:': `${LEVELS[lvl].min} Züge` });
+      else ctx.hud.set({ Level: lvl + 1, 'Züge': hist.length, 'Profi:': LEVELS[lvl].min });
     }
     function toSelect() {
       mode = 'select'; drag = null; hint = null; busy = false; exitAnim = null;
@@ -251,8 +250,11 @@ export default {
     ctx.on(canvas, 'pointerup', pointerUp);
     ctx.on(canvas, 'pointercancel', e => { if (drag && e.pointerId === drag.id) { vs[drag.i].tp = drag.start; drag = null; } });
 
+    let lastKey = '';
+    ctx.on(window, 'keydown', e => { lastKey = e.key; }, true); // Shift soll nicht als B zählen (Shift+Tab)
     ctx.input.onPress(n => {
       if (over || ctx.paused) return;
+      if (n === 'b' && lastKey === 'Shift') return;
       if (mode === 'select') {
         const cols = 4;
         if (n === 'left') cursor = Math.max(0, cursor - 1);
@@ -342,8 +344,6 @@ export default {
         g.strokeStyle = `rgba(6,214,160,${a})`; g.lineWidth = 4; g.lineCap = 'round'; g.lineJoin = 'round';
         const ax = BX + BS + 16 + k * 10; g.beginPath(); g.moveTo(ax, ey + CS / 2 - 9); g.lineTo(ax + 9, ey + CS / 2); g.lineTo(ax, ey + CS / 2 + 9); g.stroke();
       }
-      g.fillStyle = GREEN; g.font = '700 9px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
-      g.fillText('AUS', BX + BS + 25, ey + CS + 16);
       // Tannen
       fir(34, BY - 14, 46); fir(W - 30, BY - 14, 40); fir(W - 24, BY + BS + 40, 34);
     }
@@ -525,7 +525,7 @@ export default {
       g.fillStyle = '#fff'; g.font = '800 19px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(`Level ${lvl + 1} · ${NAMES[lvl]}`, W / 2, 30);
       g.fillStyle = ICE; g.font = '600 12px system-ui, sans-serif';
-      g.fillText('Bring den roten Schlitten nach rechts hinaus!', W / 2, 52);
+      g.fillText(lvl === 0 && !hist.length ? 'Zieh die Blöcke aus dem Weg!' : 'Bring den roten Schlitten nach rechts hinaus!', W / 2, 52);
       drawVehicles();
       // Info unter dem Hof
       const bm = bestMoves[lvl];
@@ -538,7 +538,7 @@ export default {
       btn('menu', '▦ Level wählen', '', true);
       btn('done', '✔ Fertig für heute', '', true);
       g.fillStyle = 'rgba(142,202,230,.7)'; g.font = '500 11px system-ui, sans-serif';
-      g.fillText(ctx.input.isTouch ? 'Block ziehen: er gleitet nur entlang seiner Achse.' : 'Ziehen mit der Maus · Tab/B: Block wählen · Pfeile: schieben · U: zurück', W / 2, 572);
+      g.fillText(ctx.input.isTouch ? 'Block ziehen: er gleitet nur entlang seiner Achse.' : 'Maus: ziehen · Tab/B: wählen · Pfeile: schieben', W / 2, 572);
     }
 
     function lock(x, y) {

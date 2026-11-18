@@ -58,7 +58,7 @@ export default {
       state = 'play';
       hud();
     }
-    function hud() { ctx.hud.set({ Insel: `${L + 1}/3`, Gold: score, Truhen: `${chestsFound}/${cfg.chests}` }); }
+    function hud() { ctx.hud.set({ Insel: `${L + 1}/3`, Gold: score }); }
 
     const cellAt = (x, y) => {
       const col = Math.floor((x - gx) / cs), row = Math.floor((y - gy) / cs);

@@ -111,7 +111,7 @@ export default {
       for (const [t, wgt] of pool) { if ((s -= wgt) <= 0) return t; }
       return 'wide';
     }
-    const targetSpeed = () => (265 + (lvl - 1) * 13 + Math.min(85, hitCount * 0.9)) * (slowT > 0 ? 0.72 : 1);
+    const targetSpeed = () => (300 + (lvl - 1) * 14 + Math.min(90, hitCount * 1.0)) * (slowT > 0 ? 0.72 : 1);
 
     function fix(b, s) {
       const a = Math.hypot(b.vx, b.vy) || 1;

@@ -113,9 +113,13 @@ export function drawHarbor(g, map, t, glow) {
   const { harbor: h, pier: p, houses } = map;
   // Hafenring
   g.save();
-  g.strokeStyle = glow ? `rgba(255,209,102,${0.55 + Math.sin(t * 6) * 0.35})` : 'rgba(255,255,255,.22)';
+  g.strokeStyle = glow ? `rgba(255,209,102,${0.7 + Math.sin(t * 6) * 0.3})` : 'rgba(255,255,255,.22)';
   g.lineWidth = glow ? 4 : 2; g.setLineDash([10, 8]); g.lineDashOffset = -t * 20;
   g.beginPath(); g.arc(h.x, h.y, h.r, 0, TAU); g.stroke(); g.setLineDash([]); g.restore();
+  if (glow) {
+    g.font = 'bold 13px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 3; g.strokeStyle = '#0b1437'; g.strokeText('HAFEN', h.x, h.y); g.fillStyle = C.gold; g.fillText('HAFEN', h.x, h.y);
+  }
   // Bojen
   for (const [dx, c] of [[-h.r - 6, C.red], [h.r + 6, C.green]]) {
     const by = h.y - 30 + Math.sin(t * 2 + dx) * 2;

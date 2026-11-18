@@ -56,6 +56,7 @@ export default {
       const sp = map.spawns.slice().sort(() => Math.random() - 0.5);
       P = makeEnt(HEROES[S.sel], sp[0].x, sp[0].y, { isPlayer: true, name: 'Du', color: '#ffd166' });
       W.ents.push(P); W.player = P;
+      W.canSeeP = o => canSee(P, o);
       const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
       for (let i = 1; i < 6; i++) {
         const h = HEROES[Math.floor(Math.random() * 3)];
@@ -283,7 +284,7 @@ export default {
       S.sel = i; ctx.save('held', i);
       A.sfx('power');
       newWorld();
-      S.phase = 'count'; W.countN = 4;
+      S.phase = 'count';
     }
     ctx.input.onPress(n => {
       if (S.phase === 'select') {
@@ -426,6 +427,7 @@ export default {
         for (const e of W.ents) if (e.alive && Math.hypot(e.x - CX, e.y - CY) > W.ringR) damage(e, dps * 0.5, null, 0, 0, '#8ecae6');
       }
       // Spieler
+      W.aimTarget = P.alive ? autoAim(P, P.hero.range * 1.15) : null;
       if (P.alive) {
         const ax = ctx.input.axis();
         if (ctx.input.down('a')) { P.holdT = (P.holdT || 0) + dt; if (P.holdT > 0.42) { P.holdT = 0; playerThrow(); } }

@@ -71,7 +71,7 @@ export default {
     };
 
     // ---------- Gegner & Gegenstände ----------
-    const rivalWanted = () => [1, 2, 2, 3, 3, 3][Math.min(5, leg)];
+    const rivalWanted = () => [1, 2, 2, 3, 3, 4][Math.min(5, leg)];
     function spawnRival() {
       const p = waterPoint(map, { awayFrom: ship, minDist: 380, pad: 40 });
       if (dist(p, harbor) < 260) return;
@@ -225,7 +225,7 @@ export default {
         }
         const diff = wrap(Math.atan2(ty - r.y, tx - r.x) - r.ang);
         r.ang = wrap(r.ang + Math.max(-1.5, Math.min(1.5, diff * 2)) * dt);
-        const want = engage ? 68 + leg * 3 : 38;
+        const want = engage ? 70 + leg * 4 : 38;
         r.spd += (want - r.spd) * Math.min(1, dt);
         r.x += Math.cos(r.ang) * r.spd * dt; r.y += Math.sin(r.ang) * r.spd * dt;
         for (const isl of map.islands) { const h = islandPush(isl, r.x, r.y, 14); if (h) { r.x += h.nx * h.depth; r.y += h.ny * h.depth; r.ang = wrap(r.ang + 0.08 * r.dir); } }
@@ -236,9 +236,9 @@ export default {
           r.shootT -= dt;
           if (r.shootT <= 0) {
             r.shootT = rnd(2.3, 3.3) - leg * 0.12;
-            const tt = d / 125 * 0.5;
+            const tt = d / 135 * 0.8;
             const a = Math.atan2(ship.y + Math.sin(ship.ang) * ship.spd * tt - r.y, ship.x + Math.cos(ship.ang) * ship.spd * tt - r.x);
-            balls.push({ x: r.x, y: r.y, vx: Math.cos(a) * 125, vy: Math.sin(a) * 125, life: 2.6, own: 'e' });
+            balls.push({ x: r.x, y: r.y, vx: Math.cos(a) * 135, vy: Math.sin(a) * 135, life: 2.6, own: 'e' });
             ctx.audio.tone(500, 0.12, 'triangle', 0.1, 260); ring(r.x, r.y, 12, 'rgba(199,125,255,.8)');
           }
         }
@@ -267,7 +267,7 @@ export default {
         let hit = false;
         if (map.islands.some(i => islandPush(i, b.x, b.y, 0)) || map.rocks.some(r => dist(r, b) < r.r) || b.y > LAND_Y) hit = true;
         if (b.own === 'p' && !hit) {
-          for (const r of rivals) if (!r.sink && dist(r, b) < 17) {
+          for (const r of rivals) if (!r.sink && dist(r, b) < 19) {
             hit = true; r.hp--; r.flash = 0.15; ctx.audio.sfx('hit'); burst(b.x, b.y, '#fff', 10, 90);
             if (r.hp <= 0) { sinkRival(r); }
             break;
@@ -307,7 +307,7 @@ export default {
         if (kraken.spawnT <= 0 && kraken.tents.length < 3) {
           kraken.spawnT = rnd(1.0, 1.6);
           for (let i = 0; i < 20; i++) {
-            const lead = 0.7, a = rnd(0, TAU), r = rnd(25, 85);
+            const lead = Math.random() < 0.5 ? 1.1 : 0.6, a = rnd(0, TAU), r = i < 10 ? rnd(0, 55) : rnd(30, 90);
             const x = ship.x + Math.cos(ship.ang) * ship.spd * lead + Math.cos(a) * r, y = ship.y + Math.sin(ship.ang) * ship.spd * lead + Math.sin(a) * r;
             if (map.islands.some(o => islandPush(o, x, y, 16)) || y < 20 || x < 20 || x > WW - 20) continue;
             if (kraken.tents.some(t => Math.hypot(t.x - x, t.y - y) < 40)) continue;
@@ -379,7 +379,7 @@ export default {
       }
       if (leg % 2 === 0 && leg < 6) {
         const isl = T[leg / 2];
-        if (leg === 4 && !kraken.beaten) return;
+        if (leg === 4 && !kraken.beaten) { if (!kraken.warned && islandPush(isl, ship.x, ship.y, 34)) { kraken.warned = true; say('Erst den Kraken verjagen! Triff 7 Tentakel.'); } return; }
         if (islandPush(isl, ship.x, ship.y, 34)) { dig = { isl, t: 0 }; ship.turn = 0; ctx.audio.sfx('jump'); ctx.toast('Anker werfen!'); }
       } else if (leg % 2 === 1 && dist(ship, harbor) < harbor.r + 6) {
         delivered++; leg++; deliverFx = 1.4;
@@ -480,7 +480,7 @@ export default {
       for (const te of kraken.tents) if (te.ph === 'warn') drawTentacle(g, te, time);
       for (const r of rivals) {
         const sk = r.sink ? Math.min(1, r.sink / 1.6) : 0;
-        drawShip(g, r, time, { ghost: true, sail: Math.min(1, r.spd / 70), alpha: 1 - sk, scale: 1 - sk * 0.5, tilt: sk * 0.8, flash: r.flash > 0 });
+        drawShip(g, r, time, { ghost: true, sail: Math.min(1, r.spd / 70), alpha: 1 - sk, scale: 1.2 - sk * 0.6, tilt: sk * 0.8, flash: r.flash > 0 });
       }
       if (!(ship.inv > 0 && !ship.sink && Math.floor(ship.inv * 12) % 2)) {
         const sk = ship.sink ? Math.min(1, ship.sink / 1.6) : 0;
@@ -613,6 +613,7 @@ export default {
         get s() { return { ship: { ...ship }, leg, raised, delivered, coins, over, dig: !!dig, target: leg < 6 ? { x: target().x, y: target().y } : null, rivals: rivals.filter(r => !r.sink).map(r => ({ x: r.x, y: r.y })), tents: kraken.tents.map(t => ({ x: t.x, y: t.y, ph: t.ph })), kraken: { hp: kraken.hp, active: kraken.active, beaten: kraken.beaten }, islands: map.islands.map(i => ({ x: i.x, y: i.y, r: i.r })), rocks: map.rocks.map(r => ({ x: r.x, y: r.y, r: r.r })) }; },
         tp(x, y) { ship.x = x; ship.y = y; },
         hurt() { ship.inv = 0; hurt(ship.x + 1, ship.y); },
+        heal() { if (!ship.sink) ship.hp = HP; },
       };
     }
     return { destroy() { endMusic(); } };

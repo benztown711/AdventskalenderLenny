@@ -65,17 +65,36 @@ const WISH = {
 
 const SONGS = { deck: DECK, carol: CAROL, boss: BOSS, jingle: JINGLE, wish: WISH };
 
+// Eigener Sequenzer: plant Töne nur kurz im Voraus, damit Stoppen und Pause sofort wirken.
+const freq = n => 440 * Math.pow(2, (n - 69) / 12);
 export function createMusic(audio) {
-  let stops = [], cur = null;
-  const halt = () => { stops.forEach(s => { try { s(); } catch {} }); stops = []; };
-  return {
-    play(name) {
-      halt(); cur = name; const s = SONGS[name]; if (!s) return;
-      for (const v of s.voices) stops.push(audio.melody(v.notes, { bpm: s.bpm, type: v.type, vol: v.vol, loop: !s.once }));
-      if (s.once) cur = null;
-    },
-    stop() { halt(); cur = null; },
-    pause() { halt(); },
-    resume() { if (cur) this.play(cur); },
-  };
+  let song = null, voices = [], time = 0;
+  function play(name) {
+    const s = SONGS[name]; song = s || null; time = 0; voices = [];
+    if (!s) return;
+    const beat = 60 / s.bpm;
+    for (const v of s.voices) {
+      let t = 0; const ev = [];
+      for (const [n, b] of v.notes) { if (n) ev.push([t, n, b * beat]); t += b * beat; }
+      voices.push({ ev, len: t, i: 0, loop: 0, type: v.type, vol: v.vol, done: false });
+    }
+  }
+  function update(dt) {
+    if (!song) return;
+    time += dt;
+    let alive = false;
+    for (const v of voices) {
+      if (v.done) continue; alive = true;
+      let guard = 0;
+      while (guard++ < 64) {
+        if (v.i >= v.ev.length) { if (song.once) { v.done = true; break; } v.i = 0; v.loop++; }
+        const [t, n, d] = v.ev[v.i], start = t + v.loop * v.len;
+        if (start > time + 0.18) break;
+        if (start >= time - 0.05) audio.tone(freq(n), Math.max(0.05, d * 0.88), v.type, v.vol, null, Math.max(0, start - time));
+        v.i++;
+      }
+    }
+    if (!alive) song = null;
+  }
+  return { play, update, stop() { song = null; voices = []; } };
 }
