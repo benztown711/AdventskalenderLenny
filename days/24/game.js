@@ -37,7 +37,7 @@ export default {
     const LB = { x: W - 40, y: H - 44, r: 27 };
 
     // Hintergrund-Deko (Wald von oben)
-    const decor = Array.from({ length: 46 }, (_, i) => ({ x: rnd(0, W), y: rnd(0, H + 120), s: rnd(9, 18), k: i % 9 === 0 ? 'house' : i % 5 === 0 ? 'rock' : 'tree' }));
+    const decor = Array.from({ length: 46 }, (_, i) => ({ x: rnd(0, W), y: rnd(0, H + 120), s: rnd(9, 18), k: i % 9 === 0 ? 'house' : i % 5 === 0 ? 'rock' : 'tree', s2: rnd(0.6, 1) }));
     const flakes = Array.from({ length: 60 }, () => ({ x: rnd(0, W), y: rnd(0, H), r: rnd(0.7, 2.2), v: rnd(0.6, 1.4) }));
     const cracks = Array.from({ length: 14 }, () => ({ x: rnd(0, W), y: rnd(0, H + 120), a: rnd(0, 6), l: rnd(20, 50) }));
 
@@ -171,8 +171,8 @@ export default {
     function initP2() {
       scrollSpeed = 22; storm = 0.4;
       fort = { y: -280, eyeOpen: 0, open: false, opening: 0, broken: false, eyeGlow: false, eyeFlash: 0, lookX: 0, rubble: [], cracks: null };
-      [[58, 148], [302, 148], [124, 192], [236, 192]].forEach(([x, y], i) => addEnemy({ type: 'turret', x, y: y - 280, oy: y, hp: 18, r: 21, pts: 1000, cd: 3.2 + i * 1.1, charge: 0, aim: Math.PI / 2, n: i, burst: 0, bt: 0, big: true }));
-      eye = addEnemy({ type: 'eye', x: W / 2, y: -250, hp: 60, r: 25, pts: 3000, hittable: false, cd: 1.5, charge: 0, n: 0, act: null, big: true });
+      [[58, 148], [302, 148], [124, 192], [236, 192]].forEach(([x, y], i) => addEnemy({ type: 'turret', x, y: y - 280, oy: y, hp: 24, r: 21, pts: 1000, cd: 3.2 + i * 1.1, charge: 0, aim: Math.PI / 2, n: i, burst: 0, bt: 0, big: true }));
+      eye = addEnemy({ type: 'eye', x: W / 2, y: -250, hp: 75, r: 25, pts: 3000, hittable: false, cd: 1.5, charge: 0, n: 0, act: null, big: true });
     }
     function updateP2(dt) {
       fort.eyeFlash = Math.max(0, fort.eyeFlash - dt);
@@ -332,7 +332,7 @@ export default {
           if (a.kind === 'spiral') { a.acc += dt; while (a.acc > 0.15) { a.acc -= 0.15; a.ang += 0.36; for (const k of [0, Math.PI]) orb(e.x, e.y, a.ang + k, 82, 6, C.violet); } if (a.t > 3.4) e.act = null; }
           if (a.kind === 'wall' && a.t > a.next && a.rows > 0) {
             a.rows--; a.next += 1.45; const gx = a.gx; a.gx = clamp(a.gx + rnd(-110, 110), 70, W - 70);
-            for (let x = 14; x < W; x += 26) if (Math.abs(x - gx) > 48) ebul.push({ type: 'orb', x, y: e.y + 30, vx: 0, vy: 78, r: 6, color: C.ice, t: 0 });
+            for (let x = 14; x < W; x += 26) if (Math.abs(x - gx) > 48) ebul.push({ type: 'orb', x, y: e.y + 96, vx: 0, vy: 78, r: 6, color: C.ice, t: 0 });
             blip(300, 0.12, 'triangle', 0.06, 150);
           }
           if (a.kind === 'wall' && a.rows <= 0 && a.t > a.next) e.act = null;
@@ -664,10 +664,8 @@ export default {
         for (let i = 0; i < 6; i++) { const y = ((i * 140 + scroll * 0.6) % (span + 100)) - 100; g.beginPath(); g.ellipse((i * 97) % W, y, 90, 40, 0.3, 0, 6.3); g.fill(); }
         for (const d of decor) {
           const y = ((d.y + scroll) % span) - 60;
-          if (d.k === 'tree') { A.star(g, d.x, y + 3, d.s + 2, 'rgba(0,0,0,.25)'); A.star(g, d.x, y, d.s, '#14533f'); A.star(g, d.x, y, d.s * 0.5, '#cfe6f5', 0.6); }
-          else if (d.k === 'rock') { A.circle(g, d.x, y, d.s * 0.7, '#22346a'); A.circle(g, d.x - 2, y - 2, d.s * 0.45, '#dbe9f7'); }
+          if (d.k === 'tree' || d.k === 'rock') { A.star(g, d.x + 3, y + 4, d.s + 2, 'rgba(0,0,0,.28)'); A.star(g, d.x, y, d.s, '#14533f'); A.star(g, d.x, y, d.s * 0.72, '#1d6b50', 0.6); A.star(g, d.x, y, d.s * 0.38, '#cfe6f5', 0.3); }
           else {
-            g.globalAlpha = 0.22; A.circle(g, d.x, y + 4, 26, C.gold); g.globalAlpha = 1;
             g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(d.x - 12, y - 7, 28, 20);
             g.fillStyle = '#f4f8ff'; g.fillRect(d.x - 14, y - 10, 14, 20); g.fillStyle = '#b9cde6'; g.fillRect(d.x, y - 10, 14, 20);
             g.fillStyle = '#7a2e46'; g.fillRect(d.x - 15, y + 8, 30, 3); g.fillStyle = '#3b2f4f'; g.fillRect(d.x + 4, y - 6, 5, 5);
@@ -677,7 +675,7 @@ export default {
       } else {
         g.strokeStyle = 'rgba(180,220,255,.18)'; g.lineWidth = 1.5;
         for (const c of cracks) { const y = ((c.y + scroll) % span) - 60; g.beginPath(); g.moveTo(c.x, y); g.lineTo(c.x + Math.cos(c.a) * c.l, y + Math.sin(c.a) * c.l); g.lineTo(c.x + Math.cos(c.a + 0.7) * c.l * 1.6, y + Math.sin(c.a + 0.7) * c.l * 1.6); g.stroke(); }
-        for (const d of decor) { if (d.k !== 'rock') continue; const y = ((d.y * 1.3 + scroll) % span) - 60; A.circle(g, d.x, y, d.s * 0.8, '#c9e0f5'); A.circle(g, d.x - 3, y - 3, d.s * 0.5, '#fff'); }
+        for (const d of decor) { if (d.k !== 'rock') continue; const y = ((d.y * 1.3 + scroll) % span) - 60; g.fillStyle = '#0e1a42'; g.beginPath(); g.ellipse(d.x, y, d.s * 1.4, d.s * 0.8, 0.3, 0, 6.3); g.fill(); g.strokeStyle = 'rgba(142,202,230,.35)'; g.lineWidth = 2; g.stroke(); }
       }
     }
     function drawHall() {
@@ -687,7 +685,10 @@ export default {
       for (let x = 0; x < W; x += 60) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
       const gr = g.createLinearGradient(0, 0, 0, 230); gr.addColorStop(0, '#5f86b8'); gr.addColorStop(1, 'rgba(95,134,184,0)');
       g.fillStyle = gr; g.fillRect(0, 0, W, 230);
-      for (const sx of [14, W - 14]) for (let y = 30; y < H; y += 130) { A.circle(g, sx, y, 18, '#7da6d3'); A.circle(g, sx, y, 12, '#bfe3f5'); }
+      for (const sx of [10, W - 10]) for (let y = 40; y < H; y += 130) {
+        g.fillStyle = '#2c4a85'; g.beginPath(); g.moveTo(sx, y - 26); g.lineTo(sx + 12, y - 8); g.lineTo(sx + 12, y + 14); g.lineTo(sx, y + 26); g.lineTo(sx - 12, y + 14); g.lineTo(sx - 12, y - 8); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(142,202,230,.5)'; g.lineWidth = 1.5; g.stroke();
+      }
       // Geschenke-Haufen hinter dem Yeti
       for (let i = 0; i < 9; i++) A.drawGift(g, 70 + i * 28, 30 + (i % 3) * 9, 20, GIFT_COLORS[i % 5], (i - 4) * 0.08);
     }

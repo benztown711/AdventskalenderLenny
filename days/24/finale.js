@@ -114,12 +114,12 @@ export function createFinale({ g, W, H, audio, music, onDone, freeAfter = 15, do
     for (let i = 0; i < 4; i++) { const yy = base - 40 - i * 45, half = 70 - i * 15; g.beginPath(); g.moveTo(x - half, yy - 8); g.quadraticCurveTo(x, yy + 14, x + half, yy - 16); g.stroke(); }
     for (const l of lights) {
       const on = Math.sin(t * 3 + l.p + l.y * 0.05) > -0.2;
-      if (on) { g.globalAlpha = 0.35; circle(g, l.x, l.y, 6, l.c); g.globalAlpha = 1; }
+      if (on) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35; circle(g, l.x, l.y, 6, l.c); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
       circle(g, l.x, l.y, 2.4, on ? l.c : '#334');
     }
     // Stern
     const sy = base - h - 4;
-    g.globalAlpha = 0.25 + 0.15 * Math.sin(t * 4); circle(g, x, sy, 26, C.gold); g.globalAlpha = 1;
+    g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.18 + 0.1 * Math.sin(t * 4); circle(g, x, sy, 28, C.gold); circle(g, x, sy, 16, C.gold); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     star(g, x, sy, 15, C.gold, Math.sin(t) * 0.15); star(g, x, sy, 7, '#fff8dc', Math.sin(t) * 0.15);
   }
 
@@ -130,7 +130,8 @@ export function createFinale({ g, W, H, audio, music, onDone, freeAfter = 15, do
     for (const s of stars) { g.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(t * 1.3 + s.p)); circle(g, s.x, s.y, s.r, '#fff'); }
     g.globalAlpha = 1;
     // Mond
-    circle(g, 306, 58, 30, 'rgba(255,240,200,.12)'); circle(g, 306, 58, 20, '#fff4d6'); circle(g, 314, 52, 18, '#0a1232');
+    g.globalCompositeOperation = 'lighter'; circle(g, 306, 58, 32, 'rgba(255,240,200,.07)'); g.globalCompositeOperation = 'source-over';
+    g.save(); g.beginPath(); g.rect(0, 0, W, H); g.arc(316, 51, 18, 0, 6.3, true); g.clip('evenodd'); circle(g, 306, 58, 20, '#fff4d6'); g.restore();
     // Feuerwerk (leuchtend)
     g.globalCompositeOperation = 'lighter';
     for (const r of rockets) {
@@ -162,7 +163,7 @@ export function createFinale({ g, W, H, audio, music, onDone, freeAfter = 15, do
       g.fillStyle = '#fff'; g.beginPath(); g.moveTo(h.x - 6, top + 2); g.lineTo(h.x + h.w / 2, top - 22); g.lineTo(h.x + h.w + 6, top + 2); g.lineTo(h.x + h.w + 2, top - 2); g.lineTo(h.x + h.w / 2, top - 15); g.lineTo(h.x - 2, top - 2); g.fill();
       for (let k = 0; k < 2; k++) {
         const wx = h.x + 8 + k * (h.w - 26), wy = top + 9;
-        g.globalAlpha = 0.35; circle(g, wx + 5, wy + 5, 11, '#ffd166'); g.globalAlpha = 1;
+        g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.18; circle(g, wx + 5, wy + 5, 11, '#ffd166'); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
         g.fillStyle = Math.sin(t * 0.7 + h.x + k) > -0.9 ? '#ffd166' : '#8a6a2c'; g.fillRect(wx, wy, 10, 10);
         g.fillStyle = '#3b2f4f'; g.fillRect(wx + 4.3, wy, 1.4, 10); g.fillRect(wx, wy + 4.3, 10, 1.4);
       }
