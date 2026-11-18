@@ -75,7 +75,11 @@ export default {
       }
     }
     function num(x, y, text, color, big) { W.nums.push({ x: x + rand(-6, 6), y: y - 18, text, color, life: 0.85, big }); }
-    function msg(text, color = '#ffd166', size = 34, dur = 1.1) { W.msgs.push({ text, color, size, t: 0, dur }); }
+    function msg(text, color = '#ffd166', size = 34, dur = 1.1) {
+      if (size >= 40) W.msgs.length = 0;
+      W.msgs = W.msgs.filter(m => m.text !== text).slice(-1);
+      W.msgs.push({ text, color, size, t: 0, dur });
+    }
     function feed(text, color = '#e8f1ff') { W.feed.unshift({ text, color, t: 0 }); if (W.feed.length > 3) W.feed.pop(); }
 
     function canSee(viewer, tg) {
@@ -88,6 +92,7 @@ export default {
     function damage(tg, amount, src, kx = 0, ky = 0, color) {
       if (!tg.alive || tg.shieldT > 0 || tg.dashT > 0) return;
       if (W.over && tg.isPlayer) return;
+      if (src && !src.isPlayer && !tg.isPlayer) amount *= 0.6; // Bots untereinander etwas sanfter: Runde dauert länger
       amount = Math.round(amount);
       tg.hp -= amount; tg.lastHitT = W.t; tg.flash = 0.12; tg.revealT = Math.max(tg.revealT, 0.8);
       tg.kx += kx; tg.ky += ky;

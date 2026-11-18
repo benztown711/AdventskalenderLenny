@@ -123,7 +123,7 @@ function drawBars(g, e, W) {
 function drawFloor(g, W, tx0, ty0, tx1, ty1) {
   for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
     const i = idx(tx, ty), x = tx * T, y = ty * T;
-    g.fillStyle = (tx + ty) & 1 ? '#1b2a60' : '#1e2f68'; g.fillRect(x, y, T, T);
+    g.fillStyle = (tx + ty) & 1 ? '#1c2c64' : '#1f306a'; g.fillRect(x, y, T, T);
     g.fillStyle = 'rgba(255,255,255,.18)';
     for (let k = 0; k < 3; k++) { const hx = hash(i * 7 + k), hy = hash(i * 13 + k + 5); g.fillRect(x + hx * 36 + 2, y + hy * 36 + 2, 2, 2); }
   }
@@ -314,7 +314,7 @@ function drawUI(g, W, S, visEnts) {
     gr.addColorStop(0, 'rgba(239,71,111,0)'); gr.addColorStop(1, `rgba(239,71,111,${W.hurt})`);
     g.fillStyle = gr; g.fillRect(0, 0, VW, VH);
   }
-  const inStorm = P.alive && Math.hypot(P.x - CX, P.y - CY) > W.ringR;
+  const inStorm = P.alive && !W.over && Math.hypot(P.x - CX, P.y - CY) > W.ringR;
   if (inStorm) {
     g.strokeStyle = `rgba(142,202,230,${0.5 + 0.3 * Math.sin(t * 8)})`; g.lineWidth = 10; g.strokeRect(0, 0, VW, VH);
     txt(g, 'Raus aus dem Sturm!', VW / 2, 92, 18, '#e3f6ff');
@@ -378,10 +378,12 @@ function drawUI(g, W, S, visEnts) {
     txt(g, ready ? 'bereit!' : Math.floor(P.sup * 100) + '%', B.x, B.y + 9, 9, ready ? '#ffd166' : '#e9c9ff', 'center', 'rgba(8,14,40,.8)');
   }
   // große Mitte-Meldungen
-  W.msgs.forEach((m, i) => {
+  let my2 = VH * 0.3;
+  W.msgs.forEach(m => {
     const p = m.t / m.dur, pop = m.t < 0.15 ? 0.6 + m.t / 0.15 * 0.5 : 1.1 - Math.min(0.1, (m.t - 0.15));
     g.globalAlpha = p > 0.75 ? (1 - p) * 4 : 1;
-    txt(g, m.text, VW / 2, VH * 0.3 + i * 40, m.size * pop, m.color);
+    txt(g, m.text, VW / 2, my2, m.size * pop, m.color);
+    my2 += m.size * 1.25;
   });
   g.globalAlpha = 1;
 }

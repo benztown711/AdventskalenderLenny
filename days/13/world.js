@@ -17,16 +17,16 @@ function tryMap(plain) {
   // Viertel erzeugen und spiegeln (faire, symmetrische Arena)
   const set4 = (x, y, arr, v) => { for (const [a, b] of [[x, y], [N - 1 - x, y], [x, N - 1 - y], [N - 1 - x, N - 1 - y]]) arr[idx(a, b)] = v; };
   if (!plain) {
-    const nW = rnd(5, 7);
+    const nW = rnd(8, 11);
     for (let k = 0; k < nW; k++) {
       const sh = SHAPES[rnd(0, SHAPES.length - 1)], ox = rnd(2, H - 3), oy = rnd(2, H - 3);
       const type = Math.random() < 0.45 ? ICE : WALL;
       for (const [dx, dy] of sh) { const x = ox + dx, y = oy + dy; if (x >= 1 && y >= 1 && x < H && y < H) set4(x, y, tiles, type); }
     }
-    const nB = rnd(4, 6);
+    const nB = rnd(6, 8);
     for (let k = 0; k < nB; k++) {
       let x = rnd(2, H - 2), y = rnd(2, H - 2);
-      const len = rnd(4, 8);
+      const len = rnd(4, 9);
       for (let i = 0; i < len; i++) {
         if (tiles[idx(x, y)] === EMPTY) set4(x, y, bush, 1);
         if (Math.random() < 0.5) x += Math.random() < 0.5 ? -1 : 1; else y += Math.random() < 0.5 ? -1 : 1;
@@ -34,7 +34,7 @@ function tryMap(plain) {
       }
     }
     let c = 0, guard = 0;
-    while (c < 2 && guard++ < 200) {
+    while (c < 3 && guard++ < 200) {
       const x = rnd(3, H - 2), y = rnd(3, H - 2);
       if (tiles[idx(x, y)] === EMPTY && !bush[idx(x, y)]) { set4(x, y, tiles, CRATE); c++; }
     }

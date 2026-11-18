@@ -31,6 +31,9 @@ function decide(W, b, api) {
     if (sc < best) { best = sc; tg = o; }
   }
   B.target = tg;
+  // In den ersten Sekunden lieber Kisten knacken als quer über die Karte jagen
+  const early = W.t < 14 && tg && Math.hypot(tg.x - b.x, tg.y - b.y) > 220;
+  if (early) tg = null;
   if (Math.random() < 0.12) B.strafe *= -1;
   // 1. Sturm meiden
   if (dc > ring - 60) {

@@ -258,7 +258,7 @@ export default {
       const next = wins === 0 ? 'Gewinne das Viertelfinale für den ersten Stern.' : wins === 1 ? 'Für den zweiten Stern gewinne auch das Halbfinale, für den dritten das Finale.' : 'Gewinne auch das Finale gegen den Yeti für den dritten Stern.';
       ctx.finish({
         won, stars: wins, score: totalGoals,
-        text: won ? `Turniersieger! Alle drei Spiele gewonnen, ${totalGoals} Tore geschossen.` : `Ausgeschieden im ${ROUNDS[round]} gegen ${opp.name} (${m.sp}:${m.sa}). ${next} Gewinne jedes Spiel für einen Stern!`,
+        text: won ? `Turniersieger! Alle drei Spiele gewonnen, ${totalGoals} Tore geschossen.` : `Ausgeschieden im ${ROUNDS[round]} gegen ${opp.name} (${m.sp}:${m.sa}). ${next}`,
       });
     }
 
