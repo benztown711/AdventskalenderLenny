@@ -4,12 +4,12 @@ import { HEROES } from './heroes.js';
 import { botUpdate, newBrain } from './ai.js';
 import { drawGame, drawSelect, VW, VH, SUPER_BTN, cardRect } from './draw.js';
 
-export const howto = 'Wähle deinen Helden und bleib als letzter Wichtel in der Arena! Laufen mit Pfeiltasten/WASD oder Stick, werfen mit Leertaste, Mausklick oder Tippen auf die Arena (zielt automatisch), Super mit X oder dem Super-Knopf. Versteck dich in Tannen und meide den Schneesturm!';
+export const howto = 'Sei der letzte Wichtel in der Arena! Laufen mit Pfeiltasten/WASD oder Stick, werfen mit Leertaste, Klick oder Tippen auf die Arena (zielt automatisch), Super mit X oder dem Super-Knopf. Tannen verstecken dich, der Schneesturm kostet Ausdauer.';
 // Nur für automatische Tests: Zugriff auf die laufende Welt.
 export const debug = {};
 
 const LEVELS = [
-  { err: 0.24, lead: 0.2, react: 0.45, dodge: 0.12, dmg: 0.78, hp: 0.9, fire: [0.55, 1.1], sight: 360, playerBias: 1.4, flee: 0.3, useBush: false, superUse: 0.35 },
+  { err: 0.24, lead: 0.2, react: 0.45, dodge: 0.12, dmg: 0.72, hp: 0.9, fire: [0.55, 1.1], sight: 360, playerBias: 1.4, flee: 0.3, useBush: false, superUse: 0.35 },
   { err: 0.14, lead: 0.6, react: 0.32, dodge: 0.38, dmg: 0.92, hp: 1.0, fire: [0.4, 0.8], sight: 410, playerBias: 1.15, flee: 0.33, useBush: true, superUse: 0.6 },
   { err: 0.07, lead: 0.9, react: 0.22, dodge: 0.6, dmg: 1.05, hp: 1.1, fire: [0.25, 0.5], sight: 460, playerBias: 1.0, flee: 0.36, useBush: true, superUse: 0.9 },
 ];
@@ -173,7 +173,7 @@ export default {
         ball(e, ang - 0.03, { dmg: 340 * m, speed: h.ballSpeed, range: h.range, r: 5 });
         ball(e, ang + 0.03, { dmg: 340 * m, speed: h.ballSpeed, range: h.range, r: 5, delay: 0.1 });
       } else if (h.key === 'brummer') {
-        for (let i = -2; i <= 2; i++) ball(e, ang + i * 0.16, { dmg: 290 * m, speed: h.ballSpeed, range: h.range * rand(0.9, 1), r: 6 });
+        for (let i = -2; i <= 2; i++) ball(e, ang + i * 0.18, { dmg: 250 * m, speed: h.ballSpeed, range: h.range * rand(0.9, 1), r: 6 });
       } else ball(e, ang, { dmg: 1050 * m, speed: h.ballSpeed, range: h.range, r: 5, kind: 'icicle' });
     }
     function tryThrow(e, ang) {

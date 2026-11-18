@@ -59,7 +59,7 @@ export default {
         parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - v * 0.3, life: life * (0.6 + Math.random() * 0.6), max: life, c: colors[i % colors.length], s: size * (0.6 + Math.random() * 0.8), grav, flake: flake && Math.random() < 0.5, rot: Math.random() * 6 });
       }
     }
-    const float = (x, y, s, c = C.gold, size = 13, life = 1) => floats.push({ x, y, s, c, size, life, max: life });
+    const float = (x, y, s, c = C.gold, size = 13, life = 1, rise = 22) => floats.push({ x, y, s, c, size, life, max: life, rise });
     function deny(msg) { denyT = 1.2; denyMsg = msg; ctx.audio.sfx('bad'); }
 
     // ---------- Menü ----------
@@ -115,9 +115,9 @@ export default {
       if (menu) {
         const i = itemAt(x, y);
         if (i >= 0) { if (menu.sel === i) confirm(i); else { menu.sel = i; ctx.audio.sfx('tick'); } return; }
-        const sp = spotAt(x, y);
+        const sp = spotAt(x, y), prev = menu.spot;
         menu = null;
-        if (sp < 0 || sp === menu?.spot) return;
+        if (sp < 0 || sp === prev) return;
         openMenu(sp); navSel = sp; return;
       }
       const sp = spotAt(x, y);
@@ -155,7 +155,6 @@ export default {
       kb = true;
       if (ended || world.over) return;
       if (menu) {
-        const n = menuItems().length;
         if (name === 'b') { menu = null; ctx.audio.sfx('click'); return; }
         if (name === 'a') { if (menu.sel >= 0) confirm(menu.sel); else menu.sel = 0; return; }
         let s = menu.sel < 0 ? 0 : menu.sel;
@@ -166,7 +165,7 @@ export default {
           }
         } else if (menu.sel >= 0) s = name === 'up' ? 0 : name === 'down' ? 1 : 1 - s;
         if (s !== menu.sel) { menu.sel = s; ctx.audio.sfx('tick'); }
-        void n; return;
+        return;
       }
       if (name === 'a') {
         if (navSel === 'wave') pressWave();
@@ -187,7 +186,7 @@ export default {
             if (e.boss) music('boss'); else if (e.n === 1 || !musicKind) music('normal');
             break;
           case 'early': float(BTN_WAVE.x + BTN_WAVE.w / 2, 540, `Früh-Bonus +${e.bonus}`, C.gold, 13, 1.3); ctx.audio.sfx('coin'); break;
-          case 'clear': float(W / 2, 40, `Welle ${e.n} geschafft! +${e.bonus}`, C.green, 15, 1.8); ctx.audio.sfx('coin'); break;
+          case 'clear': float(W / 2, 58, `Welle ${e.n} geschafft! +${e.bonus}`, C.green, 15, 1.8, 6); ctx.audio.sfx('coin'); break;
           case 'pop': {
             const y = e.y - (e.air ? 16 : 0);
             const cols = e.gold ? [C.gold, '#fff', '#ffe9a8'] : e.air ? [C.violet, '#fff', '#e8d0ff'] : ['#fff', C.ice, '#dbe8ff'];
@@ -261,7 +260,7 @@ export default {
       parts = parts.filter(p => p.life > 0);
       for (const r of rings) r.life -= k; rings = rings.filter(r => r.life > 0);
       for (const b of bolts) b.life -= k; bolts = bolts.filter(b => b.life > 0);
-      for (const f of floats) { f.life -= dt; f.y -= dt * 22; } floats = floats.filter(f => f.life > 0);
+      for (const f of floats) { f.life -= dt; f.y -= dt * f.rise; } floats = floats.filter(f => f.life > 0);
       for (const f of flakes) { f.y += f.v * dt; f.x += Math.sin(T + f.p) * 6 * dt; if (f.y > MAP_H) { f.y = -4; f.x = Math.random() * W; } }
       if (banner && (banner.t += dt) > 3) banner = null;
       treeFlash = Math.max(0, treeFlash - dt * 2.5); denyT = Math.max(0, denyT - dt);
@@ -492,7 +491,7 @@ export default {
       drawBar();
     }
 
-    ctx.timeout(() => { if (!world.wave) float(W / 2, 300, 'Baue zuerst einen Turm!', '#fff', 16, 2.4); }, 600);
+    ctx.timeout(() => { if (!world.wave && !world.towers.some(Boolean)) float(W / 2, 300, 'Baue zuerst einen Turm!', '#fff', 16, 2.4); }, 600);
     ctx.loop(dt => { update(dt); draw(); });
     // Für eigene Tests im Browser erreichbar (nicht global): Canvas-Eigenschaft
     canvas._td = { world, L, setSpeed: v => { speed = v; } };

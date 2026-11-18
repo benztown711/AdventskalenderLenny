@@ -174,15 +174,17 @@ export function drawTower(g, t, T, icon = false) {
   const { x, y } = t, lvl = t.lvl || 0, k = t.kick || 0, a = t.ang ?? -Math.PI / 2;
   if (!icon) base(g, x, y, lvl);
   if (t.type === 'sling') {
-    g.save(); g.translate(x, y - 2); g.rotate(a + Math.PI / 2);
-    const pull = (1 - k) * 4;
-    g.strokeStyle = '#3b2414'; g.lineWidth = 6; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(0, 8); g.lineTo(0, -1); g.moveTo(0, -1); g.lineTo(-7, -11); g.moveTo(0, -1); g.lineTo(7, -11); g.stroke();
-    g.strokeStyle = lvl === 2 ? '#c98a3a' : '#9b6236'; g.lineWidth = 3.6;
-    g.beginPath(); g.moveTo(0, 8); g.lineTo(0, -1); g.lineTo(-7, -11); g.moveTo(0, -1); g.lineTo(7, -11); g.stroke();
-    g.strokeStyle = C.red; g.lineWidth = 1.6;
-    g.beginPath(); g.moveTo(-7, -11); g.lineTo(0, -4 + pull); g.lineTo(7, -11); g.stroke();
-    if (k < 0.5) { g.fillStyle = '#fff'; circle(g, 0, -4 + pull, 3.6); }
+    // Steinschleuder steht aufrecht und lehnt sich zum Ziel
+    const lean = Math.max(-0.55, Math.min(0.55, Math.cos(a) * 0.55)), pull = (1 - k) * 5;
+    g.fillStyle = '#e8f0ff'; circle(g, x - 9, y + 5, 3.2); circle(g, x - 5, y + 7, 3.2); circle(g, x - 7.5, y + 2.5, 3);
+    g.save(); g.translate(x + 2, y + 6); g.rotate(lean);
+    g.strokeStyle = '#3b2414'; g.lineWidth = 6.5; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -11); g.lineTo(-7, -21); g.moveTo(0, -11); g.lineTo(7, -21); g.stroke();
+    g.strokeStyle = lvl === 2 ? '#d89b45' : lvl === 1 ? '#b57a42' : '#9b6236'; g.lineWidth = 4;
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -11); g.lineTo(-7, -21); g.moveTo(0, -11); g.lineTo(7, -21); g.stroke();
+    g.strokeStyle = C.red; g.lineWidth = 1.8;
+    g.beginPath(); g.moveTo(-7, -21); g.lineTo(0, -15 + pull); g.lineTo(7, -21); g.stroke();
+    if (k < 0.5) { g.fillStyle = '#fff'; circle(g, 0, -15 + pull, 4); g.fillStyle = '#c9d6f2'; circle(g, 1, -14 + pull, 1.8); }
     g.restore();
   } else if (t.type === 'cannon') {
     g.fillStyle = '#2d2f4a'; circle(g, x, y - 1, 9);
@@ -192,8 +194,9 @@ export function drawTower(g, t, T, icon = false) {
     g.fillStyle = '#fff'; g.fillRect(back - 6, -bw, len + 4, bw * 2);
     g.fillStyle = C.red; for (let i = -8; i < len + 6; i += 6) { g.beginPath(); g.moveTo(back + i, -bw); g.lineTo(back + i + 3, -bw); g.lineTo(back + i - 3, bw); g.lineTo(back + i - 6, bw); g.fill(); }
     g.restore();
-    g.strokeStyle = C.red; g.lineWidth = bw * 0.8; g.lineCap = 'round';
-    g.beginPath(); g.arc(back - 4, -bw * 0.9, bw * 0.9, Math.PI * 0.5, Math.PI * 1.5); g.stroke();
+    g.lineCap = 'round';
+    g.strokeStyle = '#fff'; g.lineWidth = bw * 0.6; g.beginPath(); g.arc(back - 3, -bw * 0.75, bw * 0.75, Math.PI * 0.5, Math.PI * 1.4); g.stroke();
+    g.strokeStyle = C.red; g.lineWidth = bw * 0.6; g.setLineDash([2.5, 2.5]); g.beginPath(); g.arc(back - 3, -bw * 0.75, bw * 0.75, Math.PI * 0.5, Math.PI * 1.4); g.stroke(); g.setLineDash([]);
     g.restore();
     g.fillStyle = '#4b4e78'; circle(g, x, y - 2, 4.5);
     if (lvl === 2) { g.fillStyle = C.gold; circle(g, x, y - 2, 2.2); }

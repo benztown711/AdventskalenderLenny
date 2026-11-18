@@ -41,7 +41,7 @@ export default {
     const flakes = Array.from({ length: 60 }, () => ({ x: rnd(0, W), y: rnd(0, H), r: rnd(0.7, 2.2), v: rnd(0.6, 1.4) }));
     const cracks = Array.from({ length: 14 }, () => ({ x: rnd(0, W), y: rnd(0, H + 120), a: rnd(0, 6), l: rnd(20, 50) }));
 
-    const hud = () => ctx.hud.set({ Punkte: score, Geschenke: gifts, Neustarts: restarts });
+    const hud = () => ctx.hud.set({ Punkte: score, Neustarts: restarts });
     const sfx = n => audio.sfx(n);
     const blip = (f, d = 0.05, ty = 'square', v = 0.04, s = null) => audio.tone(f, d, ty, v, s);
 
@@ -570,7 +570,7 @@ export default {
           }
         }
         if (s.dead) continue;
-        if (fort && !fort.broken && s.y < fort.y + 116) {
+        if (fort && !fort.broken && s.y < fort.y + 116 && !(fort.open && Math.abs(s.x - W / 2) < 50)) {
           s.dead = true; parts.push({ x: s.x, y: s.y, vx: rnd(-40, 40), vy: rnd(10, 60), life: 0.2, max: 0.2, r: 2, c: C.ice });
           if (mode === 'play' && phase === 2 && Math.abs(s.x - W / 2) < 40 && !fort.open && (pingGate -= 1) < 0) { pingGate = 60; say('Das Auge ist zu! Erst die Kanonentürme!', 1.8); }
         }
@@ -666,7 +666,13 @@ export default {
           const y = ((d.y + scroll) % span) - 60;
           if (d.k === 'tree') { A.star(g, d.x, y + 3, d.s + 2, 'rgba(0,0,0,.25)'); A.star(g, d.x, y, d.s, '#14533f'); A.star(g, d.x, y, d.s * 0.5, '#cfe6f5', 0.6); }
           else if (d.k === 'rock') { A.circle(g, d.x, y, d.s * 0.7, '#22346a'); A.circle(g, d.x - 2, y - 2, d.s * 0.45, '#dbe9f7'); }
-          else { g.fillStyle = '#efe7ff'; g.fillRect(d.x - 12, y - 9, 24, 18); g.fillStyle = '#6a2b48'; g.fillRect(d.x - 12, y - 1, 24, 2); g.fillStyle = C.gold; g.globalAlpha = 0.25; A.circle(g, d.x + 15, y + 2, 7, C.gold); g.globalAlpha = 1; g.fillRect(d.x + 12, y - 1, 4, 4); }
+          else {
+            g.globalAlpha = 0.22; A.circle(g, d.x, y + 4, 26, C.gold); g.globalAlpha = 1;
+            g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(d.x - 12, y - 7, 28, 20);
+            g.fillStyle = '#f4f8ff'; g.fillRect(d.x - 14, y - 10, 14, 20); g.fillStyle = '#b9cde6'; g.fillRect(d.x, y - 10, 14, 20);
+            g.fillStyle = '#7a2e46'; g.fillRect(d.x - 15, y + 8, 30, 3); g.fillStyle = '#3b2f4f'; g.fillRect(d.x + 4, y - 6, 5, 5);
+            g.fillStyle = C.gold; g.fillRect(d.x - 4, y + 11, 6, 4);
+          }
         }
       } else {
         g.strokeStyle = 'rgba(180,220,255,.18)'; g.lineWidth = 1.5;

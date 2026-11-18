@@ -6,7 +6,7 @@ const W = 360, H = 560;
 const PL = 56, PR = 304, BAR = 150, GY = 250;          // Torpfosten links/rechts, Latte, Torlinie
 const CX = 180, BX = 180, BY = 478, R0 = 22, RG = 8, ZE = 2.75;
 const SHOTS = 5;
-const STARS = [1000, 1800, 2600];
+const STARS = [1000, 2000, 3000];
 const COL = { gold: '#ffd166', red: '#ef476f', green: '#06d6a0', ice: '#8ecae6', violet: '#c77dff' };
 
 const LEVELS = [
@@ -22,7 +22,7 @@ const LEVELS = [
     targets: [{ x: 86, y: 174, r: 15, pts: 200 }, { x: 274, y: 174, r: 15, pts: 200 }],
     obs: [{ x: 130, y: 204, w: 46, h: 22, vx: 42, min: 90, max: 270 }] },
   { name: 'Das Finale', note: 'Zwei Eisblöcke, bewegliche Zielscheiben, ein Top-Torwart!',
-    k: { delay: 0.26, rate: 6.2, reach: 118, smart: 0.55, err: 30, amp: 52, spd: 3.0, hr: 28 },
+    k: { delay: 0.26, rate: 6.2, reach: 118, smart: 0.5, err: 30, amp: 52, spd: 3.0, hr: 27 },
     targets: [{ x: 86, y: 174, r: 15, pts: 200, wob: 0 }, { x: 274, y: 174, r: 15, pts: 200, wob: 2 }, { x: 180, y: 166, r: 12, pts: 300, wob: 4 }],
     obs: [{ x: 120, y: 190, w: 44, h: 20, vx: 50, min: 90, max: 270 }, { x: 240, y: 228, w: 44, h: 20, vx: -64, min: 90, max: 270 }] },
 ];
