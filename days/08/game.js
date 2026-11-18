@@ -552,9 +552,9 @@ export default {
           const k = Math.min(1, banner.t * 5, (banner.ms - banner.t) * 4);
           g.globalAlpha = k; g.font = 'bold 13px system-ui, sans-serif';
           const lines = wrapText(banner.text, VW - 60); const bh = lines.length * 17 + 14;
-          g.fillStyle = 'rgba(244,236,216,.95)'; roundRect(22, 64, VW - 44, bh, 10); g.fill();
+          const by = VH - 112 - bh; g.fillStyle = 'rgba(244,236,216,.95)'; roundRect(22, by, VW - 44, bh, 10); g.fill();
           g.strokeStyle = '#8a5a1e'; g.lineWidth = 2; g.stroke();
-          g.fillStyle = '#3a2410'; lines.forEach((l, i) => g.fillText(l, VW / 2, 64 + 15 + i * 17));
+          g.fillStyle = '#3a2410'; lines.forEach((l, i) => g.fillText(l, VW / 2, by + 15 + i * 17));
           g.globalAlpha = 1;
         }
       }

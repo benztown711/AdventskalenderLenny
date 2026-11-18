@@ -361,7 +361,8 @@ export default {
     }
 
     refill();
-    ctx.loop(dt => {
+    ctx.loop(dt0 => {
+      const dt = Math.max(0, dt0);
       time += dt;
       for (const s of snow) { s.y += s.v * dt; if (s.y > H + 4) { s.y = -4; s.x = rng() * W; } }
       if (shown < score) shown = Math.min(score, shown + Math.max(dt * 260, (score - shown) * dt * 6));
