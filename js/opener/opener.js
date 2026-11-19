@@ -5,7 +5,7 @@ import { audio } from '../core/audio.js';
 import { fx } from '../core/fx.js';
 import { isPreview } from '../core/time.js';
 
-export const OPENERS = ['frost', 'wirbel', 'schloss', 'dorf', 'karte'];
+export const OPENERS = ['frost', 'wirbel', 'schloss', 'dorf', 'karte', 'knobel'];
 // Geheimcode für Türchen n (zweistellig). Steht auf der Ergebnis-Karte des Vortags (Tag 20 bis 23).
 export const secretCode = n => String((n * 37 + 11) % 90 + 10);
 export const weekOf = n => (n <= 6 ? 1 : n <= 13 ? 2 : n <= 20 ? 3 : 4);

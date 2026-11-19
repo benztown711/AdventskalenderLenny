@@ -3,7 +3,7 @@
 ## Anforderungen
 - Ein neues Türchen (freigeschaltet, noch nicht gespielt, noch nicht gefunden) startet nicht sofort. Erst erscheint ein
   Türöffner: ein kurzes Such- oder Knobelspiel (Ziel 15 bis 90 Sekunden), an dessen Ende das Türchen aufgeht.
-- Bei jedem Aufruf wird zufällig einer von fünf Türöffnern gewählt: `frost`, `wirbel`, `schloss`, `dorf`, `karte`.
+- Bei jedem Aufruf wird zufällig einer von sechs Türöffnern gewählt: `frost`, `wirbel`, `schloss`, `dorf`, `karte`, `knobel`.
   Neu laden lost neu aus.
 - Gefundene oder gespielte Türchen öffnen danach immer direkt. Auch Direktlinks auf neue Türchen führen erst zum Türöffner.
 - Niemand bleibt hängen: gestufte Hilfe, spätestens nach etwa 60 Sekunden führt die Hilfe sicher zum Ziel.
@@ -14,6 +14,16 @@
   Das Code-Schloss fragt ihn ab, wenn der Vortag gespielt wurde (`ctx.secret.fromYesterday`), sonst Ersatzrätsel.
 - Eltern-Vorschau: Knopf "überspringen" im Türöffner; `&tueroeffner=<id>` erzwingt einen bestimmten Türöffner.
   Das Vorschau-Passwort steht nur als Prüfsumme im Code (lokal gilt für Tests weiterhin `rentier`).
+
+## Knobel-Schloss (`knobel`)
+- Ein Rätsel auf Niveau Klasse 4 lösen, die Lösung als Zahl eintippen (Zahlenfeld oder Tastatur). Stufe und Fach wählt das Kind,
+  Standard ist die Stufe passend zur Woche (Woche 1 Leicht, 2 und 3 Mittel, 4 Knifflig), danach die zuletzt gewählte.
+  - Rechnen: Kopfrechnen, Bilder-Rätsel, Zahlenfolgen, Rechenmauern, Sachaufgaben.
+  - Deutsch: Wortarten zählen, Groß- und Kleinschreibfehler zählen, Wörterschlange, Silben, ABC, Buchstaben zählen.
+  - Wissen: Allgemeinwissen mit Zahlen-Antwort, auch kombiniert mit Rechnen.
+- Tipp 1 ist frei, Tipp 2 und der Lösungsweg kosten den Schlüssel. "Anderes Rätsel" tauscht jederzeit.
+- Rätsel kommen aus `js/opener/raetsel.js` (Vorlagen, garantiert lösbar), Oberfläche aus `js/opener/knobel-panel.js`
+  (auch für die Knobel-Ecke). Prüfung: `node tools/raetsel-test.mjs` (mit `--zeigen` für Beispiele).
 
 ## Vertrag für `js/opener/<id>.js`
 ES-Modul ohne Imports aus anderen Ordnern, keine externen Dateien, keine Bibliotheken.

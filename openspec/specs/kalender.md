@@ -32,3 +32,8 @@
   (Zugefrorene Türchen, Wichtel-Wirbel, Code-Schloss, Wimmel-Winterdorf, Nebel-Schatzkarte). Der Anspruch steigt im Dezember.
 - Gefundene oder gespielte Türchen öffnen direkt. Wer ohne Tipp findet, bekommt einen Schlüssel 🗝️ (Zähler oben).
 - Die Ergebnis-Karten von Tag 20 bis 23 zeigen den Geheimcode für das Schloss des nächsten Türchens.
+
+### Anforderung: Knobel-Ecke
+- Knopf "Knobel-Ecke" im Kalender-Kopf: freies Üben mit den Rätseln des Türöffners "Knobel-Schloss" (siehe `tueroeffner.md`).
+- Stufe (Leicht, Mittel, Knifflig) und Fach (Mix, Rechnen, Deutsch, Wissen) frei wählbar, die Wahl bleibt gespeichert.
+- Serie (richtig ohne Fehler und ohne Tipp 2) und Rekord. Kein Einfluss auf Türchen, Sterne oder Schlüssel.

@@ -5,6 +5,7 @@ import { fx } from './core/fx.js';
 import { syncTime, unlockedDay, secondsToNext, isPreview } from './core/time.js';
 import { openDay, closeDay } from './core/shell.js';
 import { runOpener, closeOpener } from './opener/opener.js';
+import { openKnobelEcke, closeKnobelEcke } from './core/knobel-ecke.js';
 
 const view = document.getElementById('view');
 const ORDER = [7, 18, 3, 22, 11, 1, 15, 24, 9, 5, 20, 13, 2, 17, 8, 23, 12, 6, 19, 4, 21, 10, 16, 14];
@@ -37,6 +38,7 @@ function renderCalendar() {
           ${store.totalKeys() ? `<span class="chip big" title="Ohne Tipp gefundene Türchen">🗝️ <b>${store.totalKeys()}</b></span>` : ''}
           <button class="chip big" id="mute">${audio.muted ? '🔇 Ton aus' : '🔊 Ton an'}</button>
         </div>
+        <button class="knobel-btn" id="knobel">🧩 Knobel-Ecke <span>Rätsel zum Üben</span></button>
       </header>
       <div class="grid">${ORDER.map(n => {
         const m = DAYS[n - 1], d = store.day(n);
@@ -67,6 +69,7 @@ function renderCalendar() {
   };
   clearInterval(tickId); tickId = setInterval(tick, 1000); tick();
   view.querySelector('#mute').onclick = e => { audio.unlock(); audio.setMuted(!audio.muted); e.currentTarget.textContent = audio.muted ? '🔇 Ton aus' : '🔊 Ton an'; };
+  view.querySelector('#knobel').onclick = () => { audio.unlock(); audio.sfx('click'); openKnobelEcke(); };
   view.querySelector('.grid').onclick = e => {
     const door = e.target.closest('.door'); if (!door) return;
     const n = +door.dataset.n; audio.unlock();
@@ -91,7 +94,7 @@ function startOpener(n) {
 
 function route() {
   clearInterval(tickId);
-  closeOpener();
+  closeOpener(); closeKnobelEcke();
   const m = location.hash.match(/^#\/(\d{1,2})$/);
   const n = m ? +m[1] : 0;
   // Direktlink auf ein neues Türchen: erst finden (in der Eltern-Vorschau nicht, damit Tests direkt starten können)
