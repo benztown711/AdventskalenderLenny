@@ -112,7 +112,7 @@ export default {
       if (b.hearts <= 0) {
         stroke = null; keyStroke = null;
         b.helped = true;
-        ctx.toast('Alle Herzen weg. Hier sind neue, weiter geht es!', 2200);
+        ctx.toast('Neue Herzen, weiter geht es!', 2200);
         ctx.timeout(() => { if (b && screen === 'play' && b.hearts <= 0) b.hearts = MAXH; }, 900);
       }
     }

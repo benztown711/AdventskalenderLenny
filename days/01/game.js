@@ -399,7 +399,7 @@ export default {
       for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? COL.red : '#f3f6ff'; g.fillRect(i * 44 - 4, 190, 44, 24); }
       g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 210, W, 4);
       g.fillStyle = '#0b1437'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      for (let i = 0; i < 9; i += 2) g.fillText('ELFMETER-KÖNIG', i * 44 + 18, 203);
+      for (let i = 0; i < 9; i += 2) g.fillText('ELFMETER', i * 44 + 18, 203);
       // Rasen mit Streifen in Perspektive
       const N = 9;
       for (let i = 0; i < N; i++) {

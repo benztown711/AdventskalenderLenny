@@ -281,7 +281,7 @@ export default {
       }
       // Sterne-Markierungen unter 7/8/9
       g.fillStyle = 'rgba(255,209,102,.85)'; g.font = '12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-      STAR_AT.forEach((l, k) => g.fillText('★'.repeat(k + 1), x0 + l * pitch, 530));
+      STAR_AT.forEach((l, k) => g.fillText((k + 1) + '★', x0 + l * pitch, 530));
       if (drops === 0 && !over) {
         g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 14px system-ui, sans-serif'; g.lineWidth = 4; g.lineJoin = 'round'; g.strokeStyle = 'rgba(11,20,55,.9)'; g.fillStyle = '#fff';
         g.globalAlpha = 0.8 + 0.2 * Math.sin(time * 4);

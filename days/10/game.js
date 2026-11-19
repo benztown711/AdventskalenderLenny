@@ -485,8 +485,9 @@ export default {
       const t = clamp(b.off / (pw / 2), -1, 1), a = t * 0.9;
       g.fillStyle = 'rgba(255,255,255,.55)';
       for (let i = 1; i <= 5; i++) { const d = 14 + i * 15; g.beginPath(); g.arc(b.x + Math.sin(a) * d, b.y - Math.cos(a) * d, 2.2 - i * 0.2, 0, 6.3); g.fill(); }
-      g.globalAlpha = 0.6 + 0.4 * Math.sin(time * 5); g.textAlign = 'center'; g.font = '700 15px system-ui, sans-serif'; g.fillStyle = '#fff';
-      g.fillText(ctx.input.isTouch ? 'Schlitten ziehen, Antippen = Start' : 'Pfeile bewegen, Leertaste = Start', W / 2, 462); g.globalAlpha = 1;
+      g.globalAlpha = 0.85 + 0.15 * Math.sin(time * 5); g.textAlign = 'center'; g.font = '700 15px system-ui, sans-serif'; g.fillStyle = '#fff'; g.lineWidth = 4; g.lineJoin = 'round'; g.strokeStyle = 'rgba(11,20,55,.9)';
+      const hint = ctx.input.isTouch ? 'Schlitten ziehen, Antippen = Start' : 'Pfeile bewegen, Leertaste = Start';
+      g.strokeText(hint, W / 2, 462); g.fillText(hint, W / 2, 462); g.globalAlpha = 1;
     }
     function drawMenu() {
       g.fillStyle = 'rgba(11,20,55,.72)'; g.fillRect(0, 0, W, H);

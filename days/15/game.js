@@ -24,7 +24,7 @@ export default {
     // Hochformat (Handy): Anzeigebereich über dem Spielfeld (OY), das Spielfeld selbst bleibt 560x340.
     const r0 = ctx.root.getBoundingClientRect();
     const portrait = r0.width > 0 ? r0.height > r0.width * 0.85 : innerHeight > innerWidth;
-    const OY = portrait ? 200 : 0;
+    const OY = portrait ? 250 : 0;
     const { g } = ctx.makeCanvas(W, H + OY);
     const au = ctx.audio;
     const R = Math.random;
@@ -611,13 +611,13 @@ export default {
       g.fillStyle = '#070e2b'; g.fillRect(0, 0, W, OY);
       g.fillStyle = 'rgba(8,14,45,.9)'; g.strokeStyle = '#ffd166'; g.lineWidth = 3;
       g.beginPath(); g.roundRect(14, 12, W - 28, OY - 24, 18); g.fill(); g.stroke();
-      text(ROUNDS[round].toUpperCase(), 280, 44, 26, '#ffd166');
-      text('DU', 92, 114, 36, '#ef476f');
-      text(`${m.sp} : ${m.sa}`, 280, 114, 84, '#fff');
-      text(opp.name.toUpperCase(), 468, 114, opp.name.length > 7 ? 26 : 32, '#8ecae6');
+      text(ROUNDS[round].toUpperCase(), 280, 48, 30, '#ffd166');
+      text(`${m.sp} : ${m.sa}`, 280, 128, 104, '#fff');
+      text('DU', 100, 204, 34, '#ef476f');
+      text(opp.name.toUpperCase(), 448, 204, opp.name.length > 7 ? 24 : 30, '#8ecae6');
       const secs = Math.ceil(m.clock), clockTxt = m.golden ? 'GOLDEN GOAL' : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
       const low = !m.golden && secs <= 10, pulse = m.golden ? 1 + Math.sin(time * 8) * 0.06 : 1;
-      text(clockTxt, 280, 170, (m.golden ? 30 : 40) * pulse, m.golden ? '#ffd166' : low && Math.sin(time * 10) > 0 ? '#ef476f' : '#fff');
+      text(clockTxt, 280, 204, (m.golden ? 26 : 46) * pulse, m.golden ? '#ffd166' : low && Math.sin(time * 10) > 0 ? '#ef476f' : '#fff');
     }
 
     function drawHud() {
@@ -646,7 +646,7 @@ export default {
       if (gs[1].t > 0) chip(gs[1].target < 100 ? 'Gegner-Tor klein' : 'Gegner-Tor groß', gs[1].t, gs[1].target < 100 ? '#ef476f' : '#06d6a0');
       // Zentrale Texte
       if (m.phase === 'intro' && m.cd) {
-        text(ROUNDS[round].toUpperCase(), 280, 118, 26, '#ffd166'); text(`gegen ${opp.name}`, 280, 146, 20, '#fff');
+        if (!portrait) { text(ROUNDS[round].toUpperCase(), 280, 118, 26, '#ffd166'); text(`gegen ${opp.name}`, 280, 146, 20, '#fff'); }
         const c = Math.ceil(m.t), k = 1 - (m.t - Math.floor(m.t));
         if (c >= 1 && c <= 3) text(String(c), 280, 200, 64 + (1 - k) * 22, '#fff');
       } else if (m.banner) {

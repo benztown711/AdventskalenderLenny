@@ -146,7 +146,7 @@ export default {
     // ---------- Fehlablage ----------
     function noRoom(h) {
       ctx.audio.sfx('bad'); slots[h.i].wob = 0.45;
-      floatText('Hier ist kein Platz', W / 2, Math.min(Math.max(h.cy, GY + 40), GY + N * C - 40), '#ff9db1', 20, 1.1);
+      floatText('Hier ist kein Platz', W / 2, placed === 0 ? GY + 36 : Math.min(Math.max(h.cy, GY + 40), GY + N * C - 40), '#ff9db1', 20, 1.1);
     }
 
     // ---------- Legen ----------
@@ -282,7 +282,7 @@ export default {
         hl.cols.forEach(x => { rr(g, GX + x * C + 1, GY - 2, C - 2, N * C + 4, 9); g.fill(); g.stroke(); });
       }
       if (placed === 0 && !over) { // Hilfszeile bis zum ersten gelegten Stück
-        g.fillStyle = 'rgba(11,20,55,.72)'; rr(g, GX + 14, GY + N * C / 2 - 34, N * C - 28, 68, 14); g.fill();
+        g.fillStyle = 'rgba(11,20,55,.88)'; rr(g, GX + 14, GY + N * C / 2 - 34, N * C - 28, 68, 14); g.fill();
         g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.font = '700 15px system-ui, sans-serif';
         g.fillText('Zieh ein Klötzchen aufs Brett.', W / 2, GY + N * C / 2 - 12);
         g.fillText('Volle Reihen verschwinden!', W / 2, GY + N * C / 2 + 12);
