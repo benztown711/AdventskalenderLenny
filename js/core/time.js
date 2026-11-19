@@ -1,12 +1,17 @@
 // Türchen-Logik: Tag N öffnet am N. Dezember 2026 (deutsche Zeit).
 // Die Uhrzeit kommt vom Server (Date-Header), damit Uhr-Verstellen nicht hilft.
 export const YEAR = 2026;
-const PREVIEW_CODE = 'rentier'; // Eltern-Vorschau: ?vorschau=rentier (optional &heute=5)
+// Eltern-Vorschau: ?vorschau=<Passwort> (optional &heute=5). Im Code steht nur eine Prüfsumme des Passworts,
+// damit ein geteilter Link aus dem Quelltext nicht erraten werden kann. Lokal (Tests) gilt weiterhin "rentier".
+const PREVIEW_HASH = '04414388';
+const fnv = s => { let x = 0x811c9dc5; for (const c of s) { x ^= c.codePointAt(0); x = Math.imul(x, 0x01000193) >>> 0; } return x.toString(16).padStart(8, '0'); };
+const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 let offset = 0;
 let preview = null;
 
 const params = new URLSearchParams(location.search);
-if (params.get('vorschau') === PREVIEW_CODE) {
+const pw = (params.get('vorschau') || '').trim().toLowerCase();
+if (pw && (fnv('advent:' + pw) === PREVIEW_HASH || (LOCAL && pw === 'rentier'))) {
   preview = Math.min(24, Math.max(0, parseInt(params.get('heute') ?? '24', 10) || 0));
   try { sessionStorage.setItem('adv-preview', String(preview)); } catch {}
 } else {

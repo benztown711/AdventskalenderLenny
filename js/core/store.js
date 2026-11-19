@@ -19,6 +19,10 @@ export const store = {
   },
   load(n, key, fallback) { const v = day(n).data[key]; return v === undefined ? fallback : v; },
   save(n, key, value) { day(n).data[key] = value; persist(); },
+  // Türöffner: Türchen gefunden (dann öffnet es künftig direkt), Schlüssel = ohne Hilfe gefunden
+  found(n, key) { const d = day(n); d.found = true; if (key) d.key = true; persist(); },
+  isFound(n) { return !!day(n).found; },
+  totalKeys() { return Object.values(state.days).filter(d => d.key).length; },
   totalStars() { return Object.values(state.days).reduce((s, d) => s + (d.stars || 0), 0); },
   get muted() { return !!state.muted; },
   set muted(v) { state.muted = !!v; persist(); },
