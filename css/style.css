@@ -125,3 +125,21 @@ body.in-game { overflow: hidden; }
   .cal-stats { margin-top: 4px; } .grid { grid-template-columns: repeat(8, 1fr); margin-top: 10px; gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .door, .door .door-num, .card, .toast, .stars .on { animation: none !important; } }
+
+/* ---------- Türöffner (Türchen erst finden) ---------- */
+body.in-opener { overflow: hidden; }
+.opener { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; background: radial-gradient(900px 500px at 50% -10%, #2a3f9a 0%, var(--night2) 40%, var(--night) 85%) var(--night); padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); animation: op-in .25s ease-out; }
+@keyframes op-in { from { opacity: 0; transform: scale(.97); } }
+.opener .bar-title.op-title { display: block; }
+.op-stage { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 12px 20px; -webkit-overflow-scrolling: touch; }
+.op-root { width: 100%; max-width: 440px; margin: 0 auto; position: relative; font-family: var(--font); line-height: 1.3; }
+.op-done { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(4, 8, 28, .55); z-index: 5; }
+.op-done[hidden] { display: none; }
+.op-done-card { display: grid; gap: 6px; justify-items: center; text-align: center; background: linear-gradient(170deg, #2b3c94, #18225c); border: 2px solid var(--gold); border-radius: 24px; padding: 20px 26px; font-size: 22px; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); animation: pop .35s cubic-bezier(.2, 1.5, .4, 1); }
+.op-done-card b { color: var(--gold); font-size: 26px; }
+.op-done-card span { font-size: 16px; color: var(--ink); }
+.op-done-emoji { font-size: 54px; line-height: 1; }
+.secret { margin-top: 10px !important; padding: 10px; border-radius: 14px; background: rgba(255, 209, 102, .14); border: 1px dashed var(--gold); color: var(--gold); font-size: 17px !important; }
+.secret b { font-size: 26px; letter-spacing: 3px; color: #fff; }
+@media (max-width: 520px) { .opener .bar-title.op-title { display: block; font-size: 15px; } }
+@media (prefers-reduced-motion: reduce) { .opener, .op-done-card { animation: none; } }
