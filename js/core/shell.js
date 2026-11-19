@@ -4,6 +4,7 @@ import { store } from './store.js';
 import { audio } from './audio.js';
 import { fx } from './fx.js';
 import { createInput, isTouch } from './input.js';
+import { secretCode } from '../opener/opener.js';
 
 let current = null; // { destroy() }
 
@@ -133,10 +134,12 @@ export async function openDay(n, view, goHome) {
         const starHtml = `<div class="stars">${[1, 2, 3].map(i => `<span class="${i <= stars ? 'on' : ''}" style="animation-delay:${i * 0.18}s">★</span>`).join('')}</div>`;
         const next = DAYS[n];
         const teaser = next && next.n ? `<p class="teaser">🔮 Nächstes Türchen: <i>${meta.teaser}</i></p>` : '';
+        // Woche 4: Das Code-Schloss von morgen fragt nach diesem Code
+        const code = n >= 20 && n <= 23 ? `<p class="secret">🗝️ Geheimcode für Türchen ${n + 1}: <b>${secretCode(n + 1)}</b><br><small>Merk ihn dir gut!</small></p>` : '';
         overlay({
           emoji: won ? '🎉' : (stars > 0 ? '👏' : '💪'),
           title: won ? 'Geschafft!' : (stars > 0 ? 'Stark gespielt!' : 'Knapp daneben!'),
-          html: `${starHtml}${text ? `<p>${text}</p>` : ''}${score ? `<p class="score">Punkte: <b>${score}</b>${record ? ' · Neuer Rekord! 🏆' : ''}</p>` : ''}${teaser}`,
+          html: `${starHtml}${text ? `<p>${text}</p>` : ''}${score ? `<p class="score">Punkte: <b>${score}</b>${record ? ' · Neuer Rekord! 🏆' : ''}</p>` : ''}${teaser}${code}`,
           buttons: [{ label: '🔁 Nochmal', onClick: start }, { label: '📅 Zum Kalender', onClick: goHome }],
         });
       },

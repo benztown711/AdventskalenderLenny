@@ -19,11 +19,13 @@ und Vorfreude auf das nächste wecken.
 |---|---|
 | `index.html`, `css/style.css`, `js/app.js` | Kalender-Ansicht mit 24 Türchen |
 | `js/core/` | Zeitsperre, Speicher, Ton, Steuerung, Effekte, Spiel-Rahmen |
-| `js/core/raetsel.js`, `js/core/schloss.js` | Knobel-Rätsel (Rechnen, Deutsch, Wissen) und Zahlenschloss vor neuen Türchen |
+| `js/core/knobel-ecke.js` | Knobel-Ecke: Rätsel zum Üben (nutzt `js/opener/knobel-panel.js` und `raetsel.js`) |
 | `js/days.js` | Liste der 24 Türchen (Titel, Emoji, Teaser) |
+| `js/opener/` | Türöffner: neue Türchen erst finden, siehe `specs/tueroeffner.md` |
 | `days/NN/game.js` | Je ein Spiel pro Türchen, siehe `specs/spiel-vertrag.md` |
 | `tools/smoke.mjs` | Automatischer Rauchtest aller Türchen (Desktop und Handy) |
 | `tools/raetsel-test.mjs` | Prüft tausende erzeugte Rätsel auf gültige Lösungen und Texte |
 
 ## Eltern-Vorschau
-`?vorschau=rentier` öffnet alle Türchen, `?vorschau=rentier&heute=5` simuliert den 5. Dezember.
+`?vorschau=<Passwort>` öffnet alle Türchen, `&heute=5` simuliert den 5. Dezember, `&tueroeffner=karte` erzwingt einen Türöffner.
+Das Passwort kennt nur der Kalender-Besitzer; im Code steht nur seine Prüfsumme. Lokal (localhost) gilt für Tests `rentier`.

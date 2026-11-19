@@ -1,6 +1,6 @@
 // Prüft die Knobel-Rätsel: node tools/raetsel-test.mjs [--zeigen]
 // Erzeugt viele Rätsel je Fach und Stufe und prüft Lösung, Texte und Satz-Liste.
-import { makeRiddle, SATZ_LISTE } from '../js/core/raetsel.js';
+import { makeRiddle, SATZ_LISTE } from '../js/opener/raetsel.js';
 
 let fail = 0;
 const bad = (msg, r) => { fail++; if (fail < 30) console.log('FEHLER:', msg, r ? JSON.stringify({ kind: r.kind, q: r.q, a: r.a }).slice(0, 300) : ''); };

@@ -19,13 +19,11 @@ export const store = {
   },
   load(n, key, fallback) { const v = day(n).data[key]; return v === undefined ? fallback : v; },
   save(n, key, value) { day(n).data[key] = value; persist(); },
+  // Türöffner: Türchen gefunden (dann öffnet es künftig direkt), Schlüssel = ohne Hilfe gefunden
+  found(n, key) { const d = day(n); d.found = true; if (key) d.key = true; persist(); },
+  isFound(n) { return !!day(n).found; },
+  totalKeys() { return Object.values(state.days).filter(d => d.key).length; },
   totalStars() { return Object.values(state.days).reduce((s, d) => s + (d.stars || 0), 0); },
-  // Zahlenschloss: { lvl, pts } sobald das Rätsel vor dem Türchen geknackt ist
-  lock(n) { return day(n).lock || null; },
-  setLock(n, v) { day(n).lock = v; persist(); },
-  knobelPoints() { return Object.values(state.days).reduce((s, d) => s + (d.lock?.pts || 0), 0); },
-  pref(key, fallback) { const v = (state.prefs || {})[key]; return v === undefined ? fallback : v; },
-  setPref(key, v) { (state.prefs = state.prefs || {})[key] = v; persist(); },
   get muted() { return !!state.muted; },
   set muted(v) { state.muted = !!v; persist(); },
 };
