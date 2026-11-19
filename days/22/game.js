@@ -2,15 +2,19 @@
 import * as L from './logic.js';
 import { C, FONT, circle, ring, ell, rrect, text, star, cookie, snowflake, makeBackground, drawTree, drawSpot, drawTower, drawEnemy, gift, TREE } from './draw.js';
 
-export const howto = 'Tippe oder klicke auf einen runden Bauplatz und wähle einen Turm (nochmal tippen = bauen). Tastatur: Pfeile wählen, Leertaste bestätigt, X bricht ab. Halte 12 Wellen Schneemonster vom Geschenke-Lager fern!';
+export const howto = {
+  touch: 'Tippe auf einen runden Bauplatz, wähle einen Turm und tippe nochmal, um ihn zu bauen. Halte 12 Wellen Schneemonster vom Geschenke-Lager fern!',
+  keys: 'Pfeiltasten wählen einen Bauplatz, Leertaste baut, X bricht ab (oder klicke mit der Maus). Halte 12 Wellen Schneemonster vom Geschenke-Lager fern!',
+};
+export const starsInfo = '★ Welle 8 erreichen · ★★ alle 12 Wellen überstehen · ★★★ dabei 15 Geschenke retten';
 
 const { W, H, MAP_H, SPOTS, TOWERS, TOWER_KEYS, WAVES, STEP } = L;
 const TAU = Math.PI * 2;
 const DESC = {
   sling: 'Schnell und günstig. Trifft auch Flieger.',
-  cannon: 'Zuckerstangen-Bombe trifft ganze Gruppen. Nicht in die Luft.',
-  frost: 'Bremst alle Monster in der Nähe. Nicht in die Luft.',
-  zap: 'Blitz springt von Monster zu Monster. Trifft auch Flieger.',
+  cannon: 'Bombe trifft ganze Gruppen. Nicht in die Luft.',
+  frost: 'Bremst Monster in der Nähe. Nicht in die Luft.',
+  zap: 'Blitz springt weiter. Trifft auch Flieger.',
 };
 const BTN_WAVE = { x: 92, y: 555, w: 172, h: 42 }, BTN_SPEED = { x: 272, y: 555, w: 80, h: 42 };
 const TIPS = [
@@ -33,7 +37,7 @@ export default {
     canvas.style.cursor = 'pointer';
     const world = L.createWorld();
     const bg = makeBackground();
-    let speed = 1, acc = 0, T = 0, menu = null, navSel = L.HINT_SPOT, kb = false, mouse = null;
+    let progressed = false, speed = 1, acc = 0, T = 0, menu = null, navSel = L.HINT_SPOT, kb = false, mouse = null;
     let parts = [], bolts = [], rings = [], floats = [], banner = null, treeFlash = 0, hint = true;
     let musicStop = null, musicKind = null, ended = false, endT = 0, lastHud = '', denyT = 0, denyMsg = '';
     const gate = {};
@@ -222,7 +226,7 @@ export default {
             rings.push({ x: e.x, y: e.y, r: 10, to: e.r, life: 0.5, max: 0.5, c: C.ice, frost: true });
             once('frost', 200, () => tone(1800, 0.12, 'sine', 0.04, 2600));
             break;
-          case 'dmg': once('dmg', 140, () => float(e.x, e.y, String(e.v), '#fff', 11, 0.6)); break;
+          case 'dmg': once('dmg', 140, () => float(e.x, e.y, String(e.v), '#fff', 12, 0.6)); break;
           case 'boss': ctx.fx.shake(400); tone(90, 0.7, 'sawtooth', 0.22, 45); float(W / 2, 220, 'Der Riesen-Yeti kommt!', C.red, 20, 2); break;
           case 'win': case 'lose': endGame(); break;
         }
@@ -255,6 +259,10 @@ export default {
         while (acc >= STEP && n < 8) { L.step(world, STEP); acc -= STEP; n++; handleEvents(); }
       } else endT += dt;
       handleEvents();
+      if (!progressed && world.wave >= 8 && !world.over) {
+        progressed = true;
+        ctx.progress({ stars: 1, score: L.score(world), text: 'Welle 8 erreicht: 1 Stern! Für den 2. Stern alle 12 Wellen überstehen.' });
+      }
       const k = Math.min(dt * speed, 0.1);
       for (const p of parts) { p.life -= k; p.vy += p.grav * k; p.x += p.vx * k; p.y += p.vy * k; p.rot += k * 4; }
       parts = parts.filter(p => p.life > 0);
@@ -338,7 +346,7 @@ export default {
           g.fillStyle = bad ? C.red : afford ? '#0b1437' : '#2a2f4d'; rrect(g, x - pw / 2, py - 8, pw, 16, 8); g.fill();
           g.strokeStyle = afford ? C.gold : '#6b7299'; g.lineWidth = 1.2; rrect(g, x - pw / 2, py - 8, pw, 16, 8); g.stroke();
           cookie(g, x - pw / 2 + 8, py, 4.5);
-          text(g, label, x + 5, py + 0.5, 11.5, afford ? C.gold : '#9aa3c7');
+          text(g, label, x + 5, py + 0.5, 12, afford ? C.gold : '#9aa3c7');
         }
         if (sel && menu.t > 0.1) { g.strokeStyle = `rgba(255,209,102,${0.5 + Math.sin(T * 8) * 0.3})`; g.lineWidth = 2; ring(g, x, y, 27); }
       });
@@ -351,17 +359,24 @@ export default {
         sub = menu.sel === 1 ? `Verkaufen für ${L.sellValue(t)} Plätzchen` : t.lvl < 2 ? `Ausbauen auf Stufe ${t.lvl + 2}: stärker und weiter` : 'Voll ausgebaut! Verkaufen bringt Plätzchen zurück.';
       }
       if (denyT > 0) { title = denyMsg; sub = 'Besiege Monster, dann gibt es neue Plätzchen.'; }
-      const top = cy > MAP_H / 2;
-      const by = top ? 6 : MAP_H - 56;
+      // Info-Feld oben; nur bei den obersten Bauplätzen weicht es in die Lücke zwischen den Wegen aus (nie über den Baum)
+      const by = cy >= 200 ? 6 : 208;
       g.fillStyle = 'rgba(5,10,35,.88)'; rrect(g, 8, by, W - 16, 48, 12); g.fill();
       g.strokeStyle = denyT > 0 ? C.red : 'rgba(255,209,102,.6)'; g.lineWidth = 1.5; rrect(g, 8, by, W - 16, 48, 12); g.stroke();
       text(g, title, W / 2, by + 16, 15, denyT > 0 ? C.red : C.gold);
-      text(g, sub, W / 2, by + 34, 11.5, '#dbe4ff', { weight: 600 });
+      text(g, sub, W / 2, by + 34, 13, '#dbe4ff', { weight: 600 });
+    }
+    function drawMilestone() {
+      const w = world.wave;
+      const s = w < 8 ? 'Stern 1: Welle 8 erreichen' : w < 12 || world.lives < 15 ? 'Stern 2: alle 12 Wellen überstehen' : 'Stern 3: mit 15+ Geschenken gewinnen';
+      g.font = `700 12px ${FONT}`; const pw = g.measureText(s).width + 22;
+      g.fillStyle = 'rgba(5,10,35,.7)'; rrect(g, W / 2 - pw / 2, 6, pw, 22, 11); g.fill();
+      text(g, s, W / 2, 17.5, 12, C.gold, { weight: 700 });
     }
     function drawBar() {
       g.fillStyle = '#081030'; g.fillRect(0, MAP_H, W, H - MAP_H);
       g.fillStyle = 'rgba(255,209,102,.35)'; g.fillRect(0, MAP_H, W, 1.5);
-      text(g, 'WELLE', 46, 566, 10, '#a9b6e8', { weight: 700 });
+      text(g, 'WELLE', 46, 566, 12, '#a9b6e8', { weight: 700 });
       text(g, `${Math.max(1, world.wave)}/12`, 46, 584, 19, '#fff');
       // Welle-Knopf
       const b = BTN_WAVE, can = L.canCallWave(world), first = world.wave === 0;
@@ -378,7 +393,7 @@ export default {
       else { l1 = 'Welle läuft …'; l2 = ''; }
       text(g, l1, 0, l2 ? -6 : 0, 16, can ? '#fff' : '#9aa3c7');
       if (l2) {
-        text(g, l2, 0, 11, 10.5, can ? '#e5fff6' : '#9aa3c7', { weight: 700 });
+        text(g, l2, 0, 11, 12, can ? '#e5fff6' : '#9aa3c7', { weight: 700 });
         if (can && !first) cookie(g, b.w / 2 - 12, 11, 4.5);
       }
       if (!can && !world.over && world.spawnQ.length) {
@@ -419,7 +434,7 @@ export default {
       const b = world.enemies.find(e => e.boss); if (!b) return;
       const f = Math.max(0, b.hp / b.maxHp), x = 50, wdt = W - 100;
       g.fillStyle = 'rgba(5,10,35,.85)'; rrect(g, x - 6, 4, wdt + 12, 26, 9); g.fill();
-      text(g, 'Riesen-Yeti', W / 2, 12, 10.5, '#ffb3c6', { weight: 800 });
+      text(g, 'Riesen-Yeti', W / 2, 12, 12, '#ffb3c6', { weight: 800 });
       g.fillStyle = '#3a1020'; rrect(g, x, 19, wdt, 7, 3.5); g.fill();
       g.fillStyle = C.red; rrect(g, x, 19, Math.max(4, wdt * f), 7, 3.5); g.fill();
     }
@@ -476,6 +491,7 @@ export default {
       if (menu) drawMenu();
       else if (denyT > 0) { text(g, denyMsg, W / 2, MAP_H - 20, 14, C.red, { stroke: '#000', sw: 3 }); }
       drawBossBar();
+      if (!menu && !banner && !world.over && !world.enemies.some(e => e.boss)) drawMilestone();
       for (const f of floats) { g.globalAlpha = Math.min(1, f.life / f.max * 2); text(g, f.s, f.x, f.y, f.size, f.c, { stroke: 'rgba(0,0,0,.7)', sw: 3 }); }
       g.globalAlpha = 1;
       if (banner) drawBanner();

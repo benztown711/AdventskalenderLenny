@@ -1,7 +1,7 @@
 name: Kalender veröffentlichen
 on:
   push:
-    branches: [main, claude/compassionate-faraday-auyfb7]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

@@ -1,13 +1,19 @@
 // Türchen 9: Pfeil-Salat. Tippe Pfeile an, sie sausen raus, wenn die Bahn bis zum Rand frei ist.
 import { makeLevel, rayCells, DIRS, LEVELS } from './gen.js';
 
-export const howto = 'Tippe einen Pfeil an (oder Pfeiltasten + Leertaste): Er saust in Pfeilrichtung raus, wenn der Weg bis zum Rand frei ist. Sonst kostet es ein Herz. Schick alle Pfeile weg! Taste X oder Knopf "Tipp" zeigt einen freien Pfeil.';
+export const howto = {
+  touch: 'Tippe einen Pfeil an: Er saust in Pfeilrichtung davon, wenn der Weg bis zum Rand frei ist. Schick alle Pfeile weg!',
+  keys: 'Wähle mit den Pfeiltasten einen Pfeil und drück die Leertaste: Er saust in Pfeilrichtung davon, wenn der Weg bis zum Rand frei ist. X zeigt einen Tipp.',
+};
+export const starsInfo = '★ Level 3 geschafft · ★★ Level 6 · ★★★ Level 8 (ab Level 3 gibt es Herzen)';
 
 const W = 372, H = 580, FIELD_Y = 62, FIELD_H = 426;
 const COLORS = ['#ffd166', '#06d6a0', '#8ecae6', '#c77dff', '#ff9f6b'];
 const MAX_LEVEL = LEVELS.length;
-const MAX_HINTS = 3, STAR3_MAX_MISTAKES = 6;
-const BTN_MENU = { x: 14, y: 522, w: 104, h: 46 }, BTN_HINT = { x: 132, y: 522, w: 226, h: 46 };
+const MAX_HINTS = 3, HEART_FROM = 3; // Herzen gibt es erst ab Level 3
+const BTN_MENU = { x: 10, y: 522, w: 86, h: 48 }, BTN_HINT = { x: 104, y: 522, w: 124, h: 48 }, BTN_DONE = { x: 236, y: 522, w: 126, h: 48 };
+const BTN_SEL_DONE = { x: 24, y: 506, w: 324, h: 54 };
+const BTN_YES = { x: 30, y: 312, w: 150, h: 54 }, BTN_NO = { x: 192, y: 312, w: 150, h: 54 };
 const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 
 const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
@@ -37,23 +43,25 @@ export default {
   create(ctx) {
     const { canvas, g, pos } = ctx.makeCanvas(W, H);
     canvas.style.touchAction = 'none';
+    const rr_ = (x, y, w, h, r) => rrect(g, x, y, w, h, r);
     const reachedSaved = Math.max(1, Math.min(MAX_LEVEL, Math.round(Number(ctx.load('reached', 1))) || 1));
     let reached = reachedSaved;
 
     // Lauf-Zustand (für Sterne)
-    let runBest = 0, mistakes = 0, score = 0, finished = false;
+    let runBest = 0, score = 0, finished = false, msg = { text: '', t: 0 }, confirmFrom = 'play';
     // Level-Zustand
-    let mode = 'select', level = 1, n = 5, cs = 60, gx = 0, gy = 0;
+    let mode = 'select', // select | play | trans | confirm
+     level = 1, n = 5, cs = 60, gx = 0, gy = 0;
     let arrows = [], occ = [], flights = [], parts = [], floats = [];
     let hearts = 3, remaining = 0, combo = 0, hintLeft = MAX_HINTS, hint = null, hintT = 0;
-    let cursor = { x: 0, y: 0 }, keyUsed = false, heartPop = [0, 0, 0], levelT = 0, sel = reached, time = 0, flashBtn = null, flashT = 0;
+    let sel2 = 1, cursor = { x: 0, y: 0 }, keyUsed = false, heartPop = [0, 0, 0], levelT = 0, sel = reached, time = 0, flashBtn = null, flashT = 0;
     const stars = Array.from({ length: 46 }, () => ({ x: Math.random() * W, y: Math.random() * H, r: 0.6 + Math.random() * 1.4, p: Math.random() * 6.3 }));
 
     const hud = () => ctx.hud.set(mode === 'select' ? { 'Level': reached } : { 'Level': level, 'Noch': remaining });
     const cx = x => gx + (x + 0.5) * cs, cy = y => gy + (y + 0.5) * cs;
 
     // ---------- Level aufbauen ----------
-    function startLevel(L) {
+    function startLevel(L, restart = false) {
       level = L; const lv = makeLevel(L); n = lv.n;
       cs = Math.min(60, Math.floor(360 / n)); gx = Math.round((W - cs * n) / 2); gy = Math.round(FIELD_Y + (FIELD_H - cs * n) / 2);
       occ = Array.from({ length: n }, () => Array(n).fill(-1));
@@ -68,12 +76,12 @@ export default {
         const m = Math.min(...used), opts = used.map((u, i) => u === m ? i : -1).filter(i => i >= 0);
         a.ci = opts[Math.floor(Math.random() * opts.length)]; a.color = COLORS[a.ci];
       });
-      flights = []; floats = []; hearts = 3; remaining = arrows.length; combo = 0; hintLeft = MAX_HINTS; hint = null; hintT = 0; levelT = 0;
+      flights = []; floats = []; hearts = 3; msg = { text: '', t: 0 }; remaining = arrows.length; combo = 0; hintLeft = MAX_HINTS; hint = null; hintT = 0; levelT = 0;
       heartPop = [0, 0, 0]; mode = 'play';
       const first = arrows.reduce((b, a) => { const c = a.cells[a.cells.length - 1], d = Math.hypot(c.x - (n - 1) / 2, c.y - (n - 1) / 2); return !b || d < b.d ? { a, d } : b; }, null).a;
       const hc = first.cells[first.cells.length - 1]; cursor = { x: hc.x, y: hc.y };
       if (reached < L) { reached = L; ctx.save('reached', L); }
-      hud(); ctx.audio.sfx('pop'); ctx.toast(`Level ${L}  ·  ${n}×${n}`);
+      hud(); ctx.audio.sfx('pop'); if (!restart) ctx.toast(`Level ${L}  ·  ${n}×${n}`, 1100);
     }
     function openSelect() {
       mode = 'select'; flights = []; sel = Math.min(reached, Math.max(1, sel)); hud();
@@ -115,14 +123,22 @@ export default {
       fixCursor(); hud();
     }
 
+    function say(text, secs = 2.6) { msg = { text, t: secs }; }
     function wrong(a, blk) {
-      hearts--; mistakes++; combo = 0; a.wiggle = 0.5; blk.blocker = 0.7; heartPop[Math.max(0, hearts)] = 0.5;
+      combo = 0; a.wiggle = 0.5; blk.blocker = 0.7;
       const h = a.cells[a.cells.length - 1];
       burst(cx(h.x), cy(h.y), '#ff3355', 8, 90);
-      ctx.audio.sfx('bad'); ctx.fx.shake(220); hud();
-      if (hearts <= 0) {
+      if (level < HEART_FROM) { // freies Üben: nur wackeln und erklären
+        ctx.audio.sfx('bad'); say('Der Weg ist versperrt. Erst den Pfeil davor wegschicken!');
+        return;
+      }
+      hearts--; heartPop[Math.max(0, hearts)] = 0.5;
+      ctx.audio.sfx('bad'); ctx.fx.shake(220);
+      say('Der Weg ist versperrt. Das kostet ein Herz.');
+      if (hearts <= 0) { // nur dieses Level neu starten, das Spiel geht weiter
         mode = 'trans'; ctx.audio.sfx('hit');
-        ctx.timeout(() => finishRun(false), 900);
+        say('Keine Herzen mehr. Neues Rätsel, gleiche Stufe: Du schaffst das!', 3);
+        ctx.timeout(() => startLevel(level, true), 1500);
       }
     }
 
@@ -143,7 +159,8 @@ export default {
 
     function levelDone() {
       mode = 'trans'; runBest = Math.max(runBest, level);
-      score += 50 + hearts * 20;
+      score += 50 + (level < HEART_FROM ? 3 : hearts) * 20;
+      ctx.progress({ stars: starsFor(runBest), score, text: nextStarText(runBest) });
       if (level < MAX_LEVEL && reached < level + 1) { reached = level + 1; ctx.save('reached', reached); }
       float(W / 2, H / 2 - 20, `Level ${level} geschafft!`, '#06d6a0', true); levelT = 1.2;
       for (let i = 0; i < 40; i++) burst(Math.random() * W, FIELD_Y + Math.random() * FIELD_H, COLORS[i % 5], 3, 200);
@@ -151,19 +168,28 @@ export default {
       else { ctx.audio.sfx('level'); ctx.fx.confetti(40); ctx.timeout(() => startLevel(level + 1), 1300); }
     }
 
+    function starsFor(b) { return b >= MAX_LEVEL ? 3 : b >= 6 ? 2 : b >= 3 ? 1 : 0; }
+    function nextStarText(b) {
+      if (b >= MAX_LEVEL) return 'Das ist die Höchstwertung. Pfeil-Meister!';
+      if (b >= 6) return `Für den dritten Stern schaffe alle ${MAX_LEVEL} Level.`;
+      if (b >= 3) return 'Für den zweiten Stern schaffe Level 6.';
+      return 'Für den ersten Stern schaffe Level 3.';
+    }
     function finishRun(allDone) {
       if (finished) return; finished = true;
-      const st = runBest >= MAX_LEVEL ? (mistakes <= STAR3_MAX_MISTAKES ? 3 : 2) : runBest >= 6 ? 2 : runBest >= 3 ? 1 : 0;
-      let more;
-      if (st === 0) more = 'Schaffe Level 3 für den ersten Stern.';
-      else if (st === 1) more = 'Schaffe Level 6 für den zweiten Stern.';
-      else if (st === 2 && runBest >= MAX_LEVEL) more = `Für den dritten Stern darfst du insgesamt höchstens ${STAR3_MAX_MISTAKES} Fehler machen (du hattest ${mistakes}).`;
-      else if (st === 2) more = `Schaffe alle ${MAX_LEVEL} Level mit höchstens ${STAR3_MAX_MISTAKES} Fehlern für den dritten Stern.`;
-      else more = 'Das ist die Höchstwertung. Pfeil-Meister!';
       const text = allDone
-        ? `Alle ${MAX_LEVEL} Level geschafft, mit ${mistakes} Fehler${mistakes === 1 ? '' : 'n'}. ${more}`
-        : `Die Herzen sind leer. Höchstes geschafftes Level: ${runBest}. ${more} Mit "Nochmal" geht es bei Level ${reached} weiter.`;
-      ctx.finish({ won: allDone, stars: st, score, text });
+        ? `Alle ${MAX_LEVEL} Level geschafft! ${nextStarText(runBest)}`
+        : `Du hast Level ${runBest || 0} als höchstes geschafft${runBest ? '' : ' (noch keins in diesem Spiel)'}. ${nextStarText(runBest)}`;
+      ctx.finish({ won: allDone, stars: starsFor(runBest), score, text });
+    }
+    // kurz warten: sonst trifft der Tipp-Klick die Ergebnis-Karte
+    const quit = () => { mode = 'trans'; ctx.timeout(() => finishRun(false), 220); };
+    // "Fertig für heute": mit Stern direkt abrechnen, sonst erst nachfragen
+    function wantDone(from) {
+      if (mode !== 'play' && mode !== 'select') return;
+      ctx.audio.sfx('click');
+      if (runBest >= 3) { quit(); return; }
+      confirmFrom = from; mode = 'confirm'; sel2 = 1;
     }
 
     // ---------- Eingabe ----------
@@ -173,7 +199,12 @@ export default {
     ctx.on(canvas, 'pointerdown', e => {
       if (finished) return; e.preventDefault();
       const p = pos(e); ctx.input.isTouch || (keyUsed = false);
+      if (mode === 'confirm') {
+        if (inRect(p, BTN_YES)) quit(); else if (inRect(p, BTN_NO)) { mode = confirmFrom; ctx.audio.sfx('click'); }
+        return;
+      }
       if (mode === 'select') {
+        if (inRect(p, BTN_SEL_DONE)) { wantDone('select'); return; }
         for (let i = 0; i < MAX_LEVEL; i++) if (inRect(p, selRect(i))) {
           if (i + 1 <= reached) { sel = i + 1; ctx.audio.sfx('click'); startLevel(i + 1); } else { ctx.audio.sfx('tick'); ctx.toast('Noch gesperrt: schaffe erst das Level davor'); }
           return;
@@ -183,6 +214,7 @@ export default {
       if (mode !== 'play') return;
       if (inRect(p, BTN_MENU)) { flashBtn = 'menu'; flashT = 0.15; ctx.audio.sfx('click'); openSelect(); return; }
       if (inRect(p, BTN_HINT)) { flashBtn = 'hint'; flashT = 0.15; useHint(); return; }
+      if (inRect(p, BTN_DONE)) { wantDone('play'); return; }
       const c = cellAt(p);
       if (c && occ[c.y][c.x] >= 0) { cursor = c; fire(arrows[occ[c.y][c.x]]); }
     });
@@ -205,8 +237,14 @@ export default {
     }
     ctx.input.onPress(name => {
       if (finished) return;
+      if (mode === 'confirm') {
+        if (name === 'left' || name === 'right') { sel2 = name === 'left' ? 0 : 1; ctx.audio.sfx('tick'); }
+        else if (name === 'a') { if (sel2 === 0) quit(); else { mode = confirmFrom; ctx.audio.sfx('click'); } }
+        return;
+      }
       if (mode === 'select') {
         const i = sel - 1;
+        if (name === 'b') { wantDone('select'); return; }
         if (name === 'a') { if (sel <= reached) startLevel(sel); return; }
         let r = Math.floor(i / 2), c = i % 2;
         if (name === 'left') c = 0; if (name === 'right') c = 1; if (name === 'up') r = Math.max(0, r - 1); if (name === 'down') r = Math.min(3, r + 1);
@@ -224,6 +262,7 @@ export default {
     function update(dt) {
       time += dt; flashT = Math.max(0, flashT - dt); levelT = Math.max(0, levelT - dt);
       for (let i = 0; i < 3; i++) heartPop[i] = Math.max(0, heartPop[i] - dt);
+      msg.t = Math.max(0, msg.t - dt);
       for (const a of arrows) { a.wiggle = Math.max(0, a.wiggle - dt); a.blocker = Math.max(0, a.blocker - dt); }
       if (hint && (hintT -= dt) <= 0) hint = null;
       for (let i = flights.length - 1; i >= 0; i--) {
@@ -253,7 +292,9 @@ export default {
       if (o.dx || o.dy) g.translate(o.dx, o.dy);
       const path = single ? [{ x: p.x - d.x * cs * 0.3, y: p.y - d.y * cs * 0.3 }, p] : pts;
       const stroke = (w, c) => { g.strokeStyle = c; g.lineWidth = w; g.beginPath(); path.forEach((q, i) => i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)); g.stroke(); };
-      if (o.glow) { g.shadowColor = o.glow; g.shadowBlur = 18; stroke(lw + 8, o.glow); g.shadowBlur = 0; }
+      if (o.pulse !== undefined) { // Tipp: dicker, pulsierender goldener Schein
+        g.shadowColor = '#ffd166'; g.shadowBlur = 14 + 22 * o.pulse; stroke(lw + 10 + 8 * o.pulse, `rgba(255,209,102,${0.55 + 0.45 * o.pulse})`); g.shadowBlur = 0;
+      } else if (o.glow) { g.shadowColor = o.glow; g.shadowBlur = 18; stroke(lw + 8, o.glow); g.shadowBlur = 0; }
       stroke(lw + 5, '#060d26'); stroke(lw, color);
       stroke(lw * 0.28, 'rgba(255,255,255,.35)');
       const tip = { x: p.x + d.x * cs * 0.46, y: p.y + d.y * cs * 0.46 };
@@ -284,16 +325,22 @@ export default {
           g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.beginPath(); g.arc(lx, ly - 3, 6, Math.PI, 0); g.stroke();
         }
       }
-      g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.6)'; g.font = `500 14px ${FONT}`;
-      g.fillText('Tippen oder Pfeiltasten + Leertaste', W / 2, 520);
+      g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.75)'; g.font = `500 14px ${FONT}`;
+      g.fillText(ctx.input.isTouch ? 'Tippe ein Level an.' : 'Klicken oder Pfeiltasten + Leertaste', W / 2, 490);
+      const r = BTN_SEL_DONE; rrect(g, r.x, r.y, r.w, r.h, 16); g.fillStyle = 'rgba(255,209,102,.16)'; g.fill(); g.strokeStyle = '#ffd166'; g.lineWidth = 2.5; g.stroke();
+      g.fillStyle = '#ffd166'; g.font = `800 19px ${FONT}`; g.textBaseline = 'middle'; g.fillText('Fertig für heute', W / 2, r.y + r.h / 2 - (ctx.input.isTouch ? 0 : 7));
+      if (!ctx.input.isTouch) { g.fillStyle = '#8ecae6'; g.font = `600 12px ${FONT}`; g.fillText('Taste X', W / 2, r.y + r.h / 2 + 12); }
     }
 
     function drawPlay() {
       // Header
-      for (let i = 0; i < 3; i++) {
+      if (level >= HEART_FROM) for (let i = 0; i < 3; i++) {
         const full = i < hearts, pop = heartPop[i] > 0 ? 1 + heartPop[i] * 1.6 : 1;
         heart(g, 26 + i * 32, 28, 11 * pop);
         if (full) { g.fillStyle = '#ef476f'; g.fill(); } else { g.strokeStyle = heartPop[i] > 0 ? '#ff3355' : 'rgba(255,255,255,.35)'; g.lineWidth = 2.5; g.stroke(); }
+      } else {
+        g.textAlign = 'left'; g.fillStyle = '#06d6a0'; g.font = `700 14px ${FONT}`; g.fillText('Frei üben', 12, 24);
+        g.fillStyle = '#8ecae6'; g.font = `600 12px ${FONT}`; g.fillText('keine Herzen', 12, 42);
       }
       g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.font = `800 20px ${FONT}`;
       g.fillText(`Level ${level}`, W / 2 + 6, 22);
@@ -302,7 +349,7 @@ export default {
       g.fillStyle = '#8ecae6'; g.font = `600 12px ${FONT}`; g.fillText(remaining === 1 ? 'Pfeil übrig' : 'Pfeile übrig', W - 14, 46);
       if (combo >= 2) {
         const k = 1 + 0.08 * Math.sin(time * 10); g.textAlign = 'left'; g.fillStyle = '#ffd166'; g.font = `800 ${Math.round(15 * k)}px ${FONT}`;
-        g.fillText(`Serie ×${combo}`, 14, 50);
+        g.fillText(`Serie ×${combo}`, 14, 52);
       }
       // Feld
       rrect(g, 6, FIELD_Y, W - 12, FIELD_H, 18); g.fillStyle = 'rgba(18,28,77,.75)'; g.fill(); g.strokeStyle = 'rgba(142,202,230,.25)'; g.lineWidth = 2; g.stroke();
@@ -315,8 +362,15 @@ export default {
         let col = a.color, o = {};
         if (a.wiggle > 0) { const k = a.wiggle / 0.5, w = Math.sin(a.wiggle * 70) * 6 * k; o.dx = -d.y * w; o.dy = d.x * w; col = Math.floor(a.wiggle * 20) % 2 ? '#ff3355' : '#ff8a9c'; }
         else if (a.blocker > 0) { o.glow = '#ff3355'; }
-        if (hint && hint.a === a) o.glow = `rgba(255,209,102,${0.55 + 0.45 * Math.sin(time * 9)})`;
+        if (hint && hint.a === a) { o.glow = '#ffd166'; o.pulse = 0.5 + 0.5 * Math.sin(time * 8); }
         drawArrow(pts, a.dir, col, o);
+      }
+      if (hint && hint.a.alive) { // pulsierender Ring um den Pfeil-Kopf
+        const hc = hint.a.cells[hint.a.cells.length - 1], ph = (time * 1.6) % 1;
+        g.save(); g.strokeStyle = '#ffd166';
+        g.globalAlpha = 1 - ph; g.lineWidth = 4; g.beginPath(); g.arc(cx(hc.x), cy(hc.y), cs * (0.4 + 0.7 * ph), 0, 6.3); g.stroke();
+        g.globalAlpha = 0.9; g.lineWidth = 3; rr_(gx + hc.x * cs + 2, gy + hc.y * cs + 2, cs - 4, cs - 4, 9); g.stroke();
+        g.restore();
       }
       // Cursor
       if (keyUsed && mode === 'play' && occ[cursor.y]?.[cursor.x] >= 0) {
@@ -339,18 +393,23 @@ export default {
       }
       for (const p of parts) { g.globalAlpha = Math.max(0, Math.min(1, p.life / p.max)); g.fillStyle = p.color; g.beginPath(); g.arc(p.x, p.y, p.size * (0.4 + 0.6 * p.life / p.max), 0, 6.3); g.fill(); }
       g.globalAlpha = 1; g.restore();
-      // Hinweis in den ersten Leveln
+      // Hinweis (immer nur eine Zeile): Rückmeldung zum letzten Zug, sonst die Regel in den ersten Leveln
       g.textAlign = 'center'; g.textBaseline = 'middle';
-      if (level <= 2) { g.fillStyle = 'rgba(255,255,255,.75)'; g.font = `600 14px ${FONT}`; g.fillText('Freier Weg bis zum Rand? Dann tippen!', W / 2, 505); }
+      if (msg.t > 0 && msg.text) {
+        g.globalAlpha = Math.min(1, msg.t * 2); g.fillStyle = '#ffd166'; g.font = `700 14px ${FONT}`;
+        const ls = msg.text.length > 40 ? [msg.text.slice(0, msg.text.lastIndexOf(' ', 40)), msg.text.slice(msg.text.lastIndexOf(' ', 40) + 1)] : [msg.text];
+        ls.forEach((t, k) => g.fillText(t, W / 2, 505 + (k - (ls.length - 1) / 2) * 15)); g.globalAlpha = 1;
+      } else if (level <= 2) { g.fillStyle = 'rgba(255,255,255,.85)'; g.font = `600 14px ${FONT}`; g.fillText('Tippe Pfeile, die freie Bahn zum Rand haben.', W / 2, 505); }
       // Knöpfe
       const btn = (r, label, sub, active, on) => {
         rrect(g, r.x, r.y, r.w, r.h, 14); g.fillStyle = on ? 'rgba(255,209,102,.4)' : active ? 'rgba(142,202,230,.18)' : 'rgba(255,255,255,.05)'; g.fill();
         g.strokeStyle = active ? '#8ecae6' : 'rgba(255,255,255,.2)'; g.lineWidth = 2; g.stroke();
-        g.fillStyle = active ? '#fff' : 'rgba(255,255,255,.4)'; g.font = `700 17px ${FONT}`; g.textAlign = 'center'; g.fillText(label, r.x + r.w / 2, r.y + r.h / 2 + (sub ? -7 : 0));
+        g.fillStyle = active ? '#fff' : 'rgba(255,255,255,.4)'; g.font = `700 16px ${FONT}`; g.textAlign = 'center'; g.fillText(label, r.x + r.w / 2, r.y + r.h / 2 + (sub ? -7 : 0));
         if (sub) { g.font = `500 12px ${FONT}`; g.fillStyle = active ? '#ffd166' : 'rgba(255,255,255,.4)'; g.fillText(sub, r.x + r.w / 2, r.y + r.h / 2 + 11); }
       };
       btn(BTN_MENU, 'Menü', '', true, flashBtn === 'menu' && flashT > 0);
-      btn(BTN_HINT, 'Tipp', `noch ${hintLeft}${ctx.input.isTouch ? '' : '  ·  Taste X'}`, hintLeft > 0 && mode === 'play', flashBtn === 'hint' && flashT > 0);
+      btn(BTN_HINT, 'Tipp', `noch ${hintLeft}${ctx.input.isTouch ? '' : ' · X'}`, hintLeft > 0 && mode === 'play', flashBtn === 'hint' && flashT > 0);
+      btn(BTN_DONE, 'Fertig', 'für heute', true, false);
       // schwebende Texte
       for (const f of floats) {
         g.globalAlpha = Math.max(0, Math.min(1, f.life * 1.6)); g.fillStyle = f.color; g.font = `800 ${f.big ? 26 : 18}px ${FONT}`; g.textAlign = 'center';
@@ -359,11 +418,24 @@ export default {
       g.globalAlpha = 1;
     }
 
+    function drawConfirm() {
+      g.fillStyle = 'rgba(6,13,38,.82)'; g.fillRect(0, 0, W, H);
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffd166'; g.font = `800 26px ${FONT}`; g.fillText('Wirklich aufhören?', W / 2, 240);
+      g.fillStyle = '#fff'; g.font = `600 15px ${FONT}`; g.fillText('Du hast noch keinen Stern.', W / 2, 276);
+      g.fillText('Ab Level 3 gibt es den ersten.', W / 2, 296);
+      [[BTN_YES, 'Ja, fertig', 0], [BTN_NO, 'Weiter spielen', 1]].forEach(([r, t, k]) => {
+        rrect(g, r.x, r.y, r.w, r.h, 16); g.fillStyle = k ? 'rgba(6,214,160,.25)' : 'rgba(255,255,255,.08)'; g.fill();
+        g.strokeStyle = !ctx.input.isTouch && sel2 === k ? '#ffd166' : k ? '#06d6a0' : 'rgba(255,255,255,.4)'; g.lineWidth = !ctx.input.isTouch && sel2 === k ? 4 : 2.5; g.stroke();
+        g.fillStyle = '#fff'; g.font = `700 17px ${FONT}`; g.fillText(t, r.x + r.w / 2, r.y + r.h / 2);
+      });
+    }
+
     function draw() {
       g.fillStyle = '#0b1437'; g.fillRect(0, 0, W, H);
       for (const s of stars) { g.globalAlpha = 0.3 + 0.5 * Math.abs(Math.sin(time * 1.2 + s.p)); g.fillStyle = '#cfe8ff'; g.beginPath(); g.arc(s.x, s.y, s.r, 0, 6.3); g.fill(); }
       g.globalAlpha = 1;
-      if (mode === 'select') drawSelect(); else drawPlay();
+      if (mode === 'select' || (mode === 'confirm' && confirmFrom === 'select')) drawSelect(); else drawPlay();
+      if (mode === 'confirm') drawConfirm();
     }
 
     ctx.loop(dt => { update(dt); draw(); });

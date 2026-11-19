@@ -107,3 +107,21 @@ body.in-game { overflow: hidden; }
 @keyframes star { from { transform: scale(0) rotate(-180deg); } }
 @media (prefers-reduced-motion: reduce) { .door.ready { animation: none; } }
 @media (max-width: 520px) { .hud { gap: 4px; } .hud .chip { font-size: 12px; padding: 2px 7px; gap: 3px; } .icon-btn { width: 36px; height: 36px; } .bar { gap: 5px; padding: 5px 6px; } }
+
+/* ---------- Nachbesserungen aus dem Nutzertest ---------- */
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.door:focus-visible { outline-offset: 2px; z-index: 3; }
+.door.ready:not(.today) { animation: none; }
+.door-new.heute { background: var(--gold); color: #3b2500; font-size: 12px; font-weight: 800; }
+.door.today .door-num { animation: heute 1.6s ease-in-out infinite; }
+@keyframes heute { 50% { transform: scale(1.14); } }
+.foot-note { margin-top: 10px; font-size: 14px; color: var(--dim); opacity: .8; }
+.cal-toast { position: fixed; left: 50%; bottom: 9vh; transform: translate(-50%, 30px); opacity: 0; pointer-events: none; z-index: 40; max-width: min(92vw, 460px); text-align: center; background: #101a4a; border: 2px solid var(--gold); color: #fff; font-weight: 800; font-size: 18px; padding: 12px 20px; border-radius: 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, .6); transition: transform .25s cubic-bezier(.2, 1.5, .4, 1), opacity .2s; }
+.cal-toast.show { transform: translate(-50%, 0); opacity: 1; }
+.starsinfo { font-size: 15px !important; color: var(--gold); background: rgba(0, 0, 0, .22); border-radius: 12px; padding: 8px 10px; }
+.starsinfo b { color: #fff; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .cal { padding-top: 8px; } .cal-head h1 { font-size: 30px; } .cal-head h1 span { display: inline; } .sub { display: none; }
+  .cal-stats { margin-top: 4px; } .grid { grid-template-columns: repeat(8, 1fr); margin-top: 10px; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .door, .door .door-num, .card, .toast, .stars .on { animation: none !important; } }

@@ -1,12 +1,16 @@
 // Türchen 1: Elfmeter-König
 // Ziehen/Wischen vom Ball Richtung Tor (Länge = Höhe, Kurve = Effet) oder Tastatur-Zielkreuz mit Leertaste.
-export const howto = 'Zieh vom Ball Richtung Tor: Richtung = Ecke, Länge = Höhe. Zieh in einer Kurve für Effet! Mit Tastatur stoppst du das Zielkreuz mit der Leertaste: erst Richtung, dann Höhe. Triff Ecken, Zielscheiben und Eisblöcke meiden!';
+export const howto = {
+  touch: 'Zieh mit dem Finger vom Ball nach oben zum Tor: Richtung = Ecke, Länge = Höhe. Zieh in einer Kurve für Effet!',
+  keys: 'Drücke zweimal die Leertaste: erst stoppt die Richtung, dann Höhe und Schuss. Mit Pfeil links oder rechts bekommt der Ball Effet.',
+};
+export const starsInfo = '★ ab 800 Punkten · ★★ ab 1900 · ★★★ ab 3000';
 
 const W = 360, H = 560;
 const PL = 56, PR = 304, BAR = 150, GY = 250;          // Torpfosten links/rechts, Latte, Torlinie
 const CX = 180, BX = 180, BY = 478, R0 = 22, RG = 8, ZE = 2.75;
 const SHOTS = 5;
-const STARS = [1000, 2000, 3000];
+const STARS = [800, 1900, 3000];
 const COL = { gold: '#ffd166', red: '#ef476f', green: '#06d6a0', ice: '#8ecae6', violet: '#c77dff' };
 
 const LEVELS = [
@@ -21,10 +25,10 @@ const LEVELS = [
     k: { delay: 0.32, rate: 5.2, reach: 108, smart: 0.45, err: 36, amp: 48, spd: 2.6, hr: 27 },
     targets: [{ x: 86, y: 174, r: 15, pts: 200 }, { x: 274, y: 174, r: 15, pts: 200 }],
     obs: [{ x: 130, y: 204, w: 46, h: 22, vx: 42, min: 90, max: 270 }] },
-  { name: 'Das Finale', note: 'Zwei Eisblöcke, bewegliche Zielscheiben, ein Top-Torwart!',
-    k: { delay: 0.26, rate: 6.2, reach: 118, smart: 0.5, err: 30, amp: 52, spd: 3.0, hr: 27 },
+  { name: 'Das Finale', note: 'Zwei Eisblöcke, bewegliche Zielscheiben, ein starker Torwart!',
+    k: { delay: 0.32, rate: 5.4, reach: 108, smart: 0.42, err: 36, amp: 50, spd: 2.8, hr: 26 },
     targets: [{ x: 86, y: 174, r: 15, pts: 200, wob: 0 }, { x: 274, y: 174, r: 15, pts: 200, wob: 2 }, { x: 180, y: 166, r: 12, pts: 300, wob: 4 }],
-    obs: [{ x: 120, y: 190, w: 44, h: 20, vx: 50, min: 90, max: 270 }, { x: 240, y: 228, w: 44, h: 20, vx: -64, min: 90, max: 270 }] },
+    obs: [{ x: 120, y: 190, w: 44, h: 20, vx: 40, min: 90, max: 270 }, { x: 240, y: 228, w: 44, h: 20, vx: -52, min: 90, max: 270 }] },
 ];
 
 export default {
@@ -45,7 +49,7 @@ export default {
     let drag = null, pend = { phase: 0, t: 0, t2: 0, x: CX, y: 200 };
     let K = { x: CX, mode: 'patrol', delayT: 0, x0: CX, h: null, des: null, cheerT: 0, caught: false, ph: 0 };
     let KP = LEVELS[0].k;
-    let finished = false;
+    let finished = false, shortMsg = 0;
 
     const flakes = Array.from({ length: 46 }, () => ({ x: rnd(0, W), y: rnd(0, H), s: rnd(0.8, 2.2), v: rnd(14, 40), ph: rnd(0, 6) }));
     const SKIN = ['#f2c9a5', '#e0a97c', '#c68b5e', '#f7d9bd', '#9a6a45'];
@@ -54,7 +58,13 @@ export default {
     for (let r = 0; r < 7; r++) for (let i = -1; i < 20; i++) crowd.push({ x: i * 19 + (r % 2) * 9 + rnd(-2, 2), y: 44 + r * 21 + rnd(-1, 1), sk: SKIN[(Math.random() * 5) | 0], sh: SHIRT[(Math.random() * 7) | 0], ph: rnd(0, 6), hat: Math.random() < 0.22 });
     const snowSpots = Array.from({ length: 16 }, () => ({ x: Math.random() < 0.5 ? rnd(-10, 40) : rnd(320, 370), y: rnd(230, 560), rx: rnd(14, 34), ry: rnd(3, 8) }));
 
-    const hud = () => ctx.hud.set({ Punkte: score, Level: `${lvl + 1}/5`, Serie: streak });
+    const starsFor = sc => sc >= STARS[2] ? 3 : sc >= STARS[1] ? 2 : sc >= STARS[0] ? 1 : 0;
+    let sentStars = 0;
+    const hud = () => {
+      ctx.hud.set({ Punkte: score, Level: `${lvl + 1}/5`, Serie: streak });
+      const st = starsFor(score);
+      if (st > sentStars) { sentStars = st; ctx.progress({ stars: st, score, text: `${goals} Tore bisher. Spiel weiter für mehr Sterne!` }); }
+    };
 
     // ---------- Töne ----------
     const whistle = () => { au.tone(2500, 0.13, 'sine', 0.12); au.tone(2500, 0.2, 'sine', 0.12, 2300, 0.17); };
@@ -93,7 +103,7 @@ export default {
       state = 'aim'; stateT = 0; shot = null; ball = null; trail = []; drag = null;
       K.mode = 'patrol'; K.h = null; K.caught = false; K.cheerT = 0;
       targets.forEach(t => { t.alive = true; });
-      pend = { phase: 0, t: rnd(0, 6), t2: 0, x: CX, y: 200 };
+      pend = { phase: 0, t: rnd(0, 6), t2: 0, x: CX, y: 200 }; shortMsg = 0;
       if (shotNo === 0) whistle();
       hud();
     }
@@ -147,7 +157,7 @@ export default {
       const a = aimFromDrag(); drag = null;
       if (state !== 'aim') return;
       if (a.ok) kick(a.tx, a.ty, a.curve, a.len);
-      else { au.sfx('tick'); ctx.toast('Zieh länger vom Ball nach oben!', 1000); }
+      else { au.sfx('tick'); shortMsg = time + 2.6; }
     };
     ctx.on(canvas, 'pointerup', release);
     ctx.on(canvas, 'pointercancel', () => { drag = null; });
@@ -314,8 +324,9 @@ export default {
       // Spielphasen
       if (state === 'intro' && stateT > 1.9) newShot();
       if (state === 'aim' && !touch && !drag) {
-        if (pend.phase === 0) { pend.t += dt * (2.2 + 0.25 * lvl); pend.x = CX + Math.sin(pend.t) * 140; }
-        else { pend.t2 += dt * (3.2 + 0.3 * lvl); pend.y = 198 + Math.sin(pend.t2) * 52; }
+        const slow = lvl === 0 ? (shotNo === 0 ? 0.55 : shotNo === 1 ? 0.8 : 1) : 1;
+        if (pend.phase === 0) { pend.t += dt * (2.2 + 0.25 * lvl) * slow; pend.x = CX + Math.sin(pend.t) * 140; }
+        else { pend.t2 += dt * (3.2 + 0.3 * lvl) * slow; pend.y = 198 + Math.sin(pend.t2) * 52; }
       }
       if (state === 'flight') {
         shot.t += dt / shot.T; shot.rot += dt * (8 + shot.pw * 10);
@@ -387,8 +398,8 @@ export default {
       // Bande
       for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? COL.red : '#f3f6ff'; g.fillRect(i * 44 - 4, 190, 44, 24); }
       g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 210, W, 4);
-      g.fillStyle = '#0b1437'; g.font = 'bold 11px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      for (let i = 0; i < 9; i += 2) g.fillText('ELFMETER-KÖNIG', i * 44 + 18, 203);
+      g.fillStyle = '#0b1437'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      for (let i = 0; i < 9; i += 2) g.fillText('ELFMETER', i * 44 + 18, 203);
       // Rasen mit Streifen in Perspektive
       const N = 9;
       for (let i = 0; i < N; i++) {
@@ -536,17 +547,28 @@ export default {
         g.restore();
         if (Math.abs(curve) > 0.35 && ok) { g.fillStyle = COL.violet; g.font = 'bold 14px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('Effet!', ax, ay - 26); }
       }
-      // Hinweis
-      const early = lvl === 0 && shotNo < 2 && !drag;
-      if (early || (!drag && !touch && shotNo < 1)) {
-        g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 15px system-ui, sans-serif';
-        const txt = touch ? 'Zieh vom Ball nach oben zum Tor!' : (pend.phase === 0 ? 'Leertaste stoppt die Richtung' : 'Leertaste: Höhe stoppen = Schuss!');
-        g.fillStyle = 'rgba(0,0,0,.55)'; const tw = g.measureText(txt).width + 24; g.beginPath(); g.roundRect(CX - tw / 2, 360, tw, 28, 14); g.fill();
-        g.fillStyle = COL.gold; g.fillText(txt, CX, 374);
-        if (touch || early) { // wandernder Finger-Punkt
-          const f = (time * 0.9) % 1;
-          g.fillStyle = 'rgba(255,255,255,.85)'; g.beginPath(); g.arc(BX + Math.sin(f * 3) * 6 + f * 40, BY - 20 - f * 120, 10 - f * 3, 0, 6.283); g.fill();
-        }
+      // Hinweis: immer nur EIN Hinweis gleichzeitig
+      if (drag) return;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      const pill = (txt, y, col) => {
+        g.font = 'bold 15px system-ui, sans-serif';
+        const tw = g.measureText(txt).width + 24; g.fillStyle = 'rgba(0,0,0,.6)'; g.beginPath(); g.roundRect(CX - tw / 2, y - 14, tw, 28, 14); g.fill();
+        g.fillStyle = col; g.fillText(txt, CX, y + 1);
+      };
+      if (touch && time < shortMsg) {
+        pill('Zu kurz! Zieh länger vom Ball nach oben.', 374, COL.red);
+      } else if (touch && lvl === 0 && shotNo < 2) {
+        pill('Zieh vom Ball nach oben zum Tor!', 374, COL.gold);
+        const f = (time * 0.9) % 1;
+        g.fillStyle = 'rgba(255,255,255,.85)'; g.beginPath(); g.arc(BX + Math.sin(f * 3) * 6 + f * 40, BY - 20 - f * 120, 10 - f * 3, 0, 6.283); g.fill();
+      } else if (!touch && lvl === 0 && shotNo < 2) {
+        const rows = [['1. Leertaste: Richtung', 0], ['2. Leertaste: Höhe und Schuss', 1]];
+        g.font = 'bold 15px system-ui, sans-serif';
+        g.fillStyle = 'rgba(0,0,0,.6)'; g.beginPath(); g.roundRect(CX - 128, 352, 256, 62, 14); g.fill();
+        rows.forEach(([t, ph], k) => {
+          const on = pend.phase === ph;
+          g.fillStyle = on ? COL.gold : 'rgba(255,255,255,.5)'; g.fillText((on ? '▶ ' : '') + t, CX, 372 + k * 24);
+        });
       }
     }
 

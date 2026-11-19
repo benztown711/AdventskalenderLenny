@@ -1,5 +1,9 @@
 // Türchen 2: Lichterketten-Schlange (Referenz-Spiel für den Spiel-Vertrag)
-export const howto = 'Steuere die Lichterkette mit Pfeiltasten oder Wischen. Sammle Glühbirnen 💡, aber beiß dir nicht in den Schwanz und bleib weg vom Rand!';
+export const howto = {
+  touch: 'Wische in die Richtung, in die die Lichterkette kriechen soll (oder nimm die Pfeil-Knöpfe). Sammle Glühbirnen, aber beiß dir nicht in den Schwanz und bleib weg vom Rand!',
+  keys: 'Steuere die Lichterkette mit den Pfeiltasten. Sammle Glühbirnen, aber beiß dir nicht in den Schwanz und bleib weg vom Rand!',
+};
+export const starsInfo = '★ ab 8 Lichtern · ★★ ab 18 · ★★★ ab 30';
 
 const COLS = 18, ROWS = 24, S = 20;
 const COLORS = ['#ef476f', '#ffd166', '#06d6a0', '#8ecae6', '#c77dff'];

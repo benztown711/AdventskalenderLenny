@@ -49,9 +49,10 @@ export function findCrossings(pts, edges) {
 
 export const countCrossings = (pts, edges) => findCrossings(pts, edges).count;
 
+// n: Birnen, f: Kabel pro Birne, minC/maxC: gewünschte Kreuzungen am Start (maxC begrenzt die ersten Level)
 export const LEVELS = [
-  { n: 6, f: 1.35 }, { n: 7, f: 1.4 }, { n: 8, f: 1.45 }, { n: 10, f: 1.5 },
-  { n: 11, f: 1.55 }, { n: 13, f: 1.6 }, { n: 14, f: 1.65 }, { n: 16, f: 1.7 },
+  { n: 4, f: 1.25, minC: 1, maxC: 2 }, { n: 5, f: 1.3, minC: 2, maxC: 4 }, { n: 6, f: 1.35 }, { n: 8, f: 1.45 },
+  { n: 10, f: 1.5 }, { n: 12, f: 1.55 }, { n: 14, f: 1.65 }, { n: 16, f: 1.7 },
 ];
 
 function distToSeg(p, a, b) {
@@ -113,11 +114,11 @@ export function generate(level, rng = Math.random) {
   const L = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, level - 1))];
   const n = L.n, m = Math.min(Math.round(n * L.f), 3 * n - 6);
   const { pts: sol, edges } = planar(n, m, rng);
-  const want = Math.max(3, Math.round(edges.length * 0.4));
+  const want = L.minC ?? Math.max(3, Math.round(edges.length * 0.4));
   const cx = (FIELD.x0 + FIELD.x1) / 2, cy = (FIELD.y0 + FIELD.y1) / 2;
   const R = Math.min(cx - FIELD.x0, cy - FIELD.y0) - 4 + 0;
   const rad = Math.min(R, 150);
-  const target = Math.max(want, Math.round(edges.length * 1.1));
+  const target = L.maxC ? Math.round((want + L.maxC) / 2) : Math.max(want, Math.round(edges.length * 1.1));
   let best = null, bestC = -1;
   for (let t = 0; t < 120; t++) {
     const perm = Array.from({ length: n }, (_, i) => i).sort(() => rng() - 0.5);
@@ -128,6 +129,7 @@ export function generate(level, rng = Math.random) {
       start[pi] = { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r };
     });
     const c = countCrossings(start, edges);
+    if (L.maxC && c > L.maxC) continue;
     if (c >= want && (bestC < want || Math.abs(c - target) < Math.abs(bestC - target))) { bestC = c; best = start; }
     else if (bestC < want && c > bestC) { bestC = c; best = start; }
   }

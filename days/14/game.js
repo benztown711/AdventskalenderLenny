@@ -2,7 +2,11 @@
 import { LEVELS } from './levels.js';
 import { N, ROW, parse, grid, pathClear, range, solve } from './solver.js';
 
-export const howto = 'Der rote Schlitten steckt im zugeparkten Hof! Zieh die Blöcke mit Finger oder Maus (Tastatur: Tab oder B wählt einen Block, Pfeiltasten schieben), bis der Weg nach rechts frei ist. Wenig Züge = Profi!';
+export const howto = {
+  touch: 'Der rote Schlitten muss nach rechts aus dem Hof. Zieh die Blöcke aus dem Weg, sie gleiten nur vor und zurück.',
+  keys: 'Der rote Schlitten muss nach rechts aus dem Hof. Mit Tab wählst du einen Block, die Pfeiltasten schieben ihn (oder zieh ihn mit der Maus).',
+};
+export const starsInfo = '★ 4 Höfe · ★★ 8 Höfe · ★★★ alle 12 Höfe befreit';
 
 const W = 360, H = 600, CS = 52, BX = 24, BY = 84, BS = CS * N;
 const NAMES = ['Vorgarten', 'Hofeinfahrt', 'Garage', 'Scheune', 'Marktplatz', 'Werkstatt', 'Holzlager', 'Geschenke-Lager', 'Rathaushof', 'Rentierstall', 'Nordpol-Tor', 'Santas Hof'];
@@ -31,7 +35,7 @@ export default {
     let mode = 'select';          // 'select' | 'play'
     let time = 0, lvl = 0, vs = [], init = [], pos = [];
     let hist = [], sel = -1, drag = null, hint = null, hintsUsed = [], busy = false, over = false;
-    let exitAnim = null, press = null, bumps = {}, cursor = Math.min(LEVELS.length - 1, maxSolved() + 1), shakeT = 0;
+    let exitAnim = null, press = null, bumps = {}, blink = {}, cursor = Math.min(LEVELS.length - 1, maxSolved() + 1), shakeT = 0;
     let parts = [];
     const flakes = Array.from({ length: 36 }, () => ({ x: Math.random() * W, y: Math.random() * H, r: 0.8 + Math.random() * 1.6, s: 8 + Math.random() * 16, ph: Math.random() * 6 }));
     hintsUsed = LEVELS.map(() => 0);
@@ -52,7 +56,7 @@ export default {
         v.kind = k === 0 ? 'sled' : v.len === 3 ? (k % 2 ? 'wood' : 'gift') : (k % 3 === 0 ? 'gift' : 'plow');
         v.col = k % 4; v.flip = k % 2 === 0;
       });
-      hist = []; sel = -1; drag = null; hint = null; busy = false; exitAnim = null; bumps = {};
+      hist = []; sel = -1; drag = null; hint = null; busy = false; exitAnim = null; bumps = {}; blink = {};
       sel = 0;
       updateHud();
     }
@@ -82,14 +86,21 @@ export default {
       if (busy || !pathClear(vs, pos)) return false;
       win(); return true;
     }
-    function bump(i, dirSign) {
+    // Zug blockiert: Block wackelt, der Nachbar im Weg blitzt auf, leiser Ton
+    function bump(i, dirSign, p) {
       bumps[i] = { t: 0, d: dirSign };
-      ctx.audio.tone(150, 0.06, 'triangle', 0.12, 110);
+      const v = vs[i], at = p === undefined ? pos[i] : p;
+      const nx = v.h ? (dirSign > 0 ? at + v.len : at - 1) : v.x, ny = v.h ? v.y : (dirSign > 0 ? at + v.len : at - 1);
+      if (nx >= 0 && ny >= 0 && nx < N && ny < N) {
+        const j = gridNow()[ny * N + nx];
+        if (j >= 0 && j !== i) blink[j] = 0.6;
+      }
+      ctx.audio.tone(150, 0.06, 'triangle', 0.07, 110);
     }
     function nudge(i, d) { // Tastatur: ein Feld schieben
       if (busy || over || i < 0) return;
       const v = vs[i];
-      if (v.h !== (d === 'left' || d === 'right')) { bumps[i] = { t: 0, d: 0, side: true }; ctx.audio.sfx('bad'); return; }
+      if (v.h !== (d === 'left' || d === 'right')) { bumps[i] = { t: 0, d: 0, side: true }; ctx.audio.tone(150, 0.06, 'triangle', 0.07, 110); return; }
       const s = (d === 'left' || d === 'up') ? -1 : 1;
       const { lo, hi } = rangeOf(i);
       const np = pos[i] + s;
@@ -149,6 +160,7 @@ export default {
       exitAnim = { x: BX + pos[0] * CS, v: 90, t: 0, bells: 0, wait: 0.35, moves, prof };
       s.sel = false;
       ctx.audio.sfx('power');
+      const sm = summary(false); if (sm.stars > 0) ctx.progress(sm);
       ctx.fx.confetti(25 + (moves <= prof ? 35 : 0));
       updateHud();
       void wasNew;
@@ -159,8 +171,7 @@ export default {
       loadLevel(lvl + 1);
       ctx.audio.sfx('swoosh');
     }
-    function finishGame(last) {
-      if (over) return; over = true;
+    function summary(last) {
       const n = solvedCount(), st = starsNow();
       let text;
       if (n >= 12) text = 'Alle 12 Höfe frei! Der Nikolaus kommt pünktlich an. Du bist ein echter Schlitten-Profi!';
@@ -169,7 +180,11 @@ export default {
         text = `${n} von 12 Höfen befreit. Noch ${need - n} Level mehr für ${'★'.repeat(st + 1)}.`;
         if (last) text = 'Letztes Level geschafft! ' + text + ' Die übrigen Level findest du in der Auswahl.';
       }
-      ctx.finish({ won: st >= 1, stars: st, score: n * 10, text });
+      return { won: st >= 1, stars: st, score: n * 10, text };
+    }
+    function finishGame(last) {
+      if (over) return; over = true;
+      ctx.finish(summary(last));
     }
 
     // ---------- Eingabe ----------
@@ -225,7 +240,7 @@ export default {
       const cell = Math.round(t);
       if (cell !== drag.last) { drag.last = cell; ctx.audio.sfx('tick'); puff(v, cell > drag.start ? 1 : -1); }
       const hit = (raw < drag.lo - 0.15 || raw > drag.hi + 0.15) && drag.hi - drag.lo >= 0;
-      if (hit && !drag.atWall) { drag.atWall = true; if (Math.abs(raw - t) > 0.15) { bump(drag.i, raw > t ? 1 : -1); } }
+      if (hit && !drag.atWall) { drag.atWall = true; if (Math.abs(raw - t) > 0.15) { bump(drag.i, raw > t ? 1 : -1, Math.round(t)); } }
       if (!hit) drag.atWall = false;
     }
     function pointerUp(e) {
@@ -466,6 +481,11 @@ export default {
         let ox = 0, oy = 0;
         if (b && !b.side) { const k = Math.sin(b.t * 40) * 2.5 * (1 - b.t / 0.25) * b.d; if (v.h) ox = k; else oy = k; }
         drawVehicle(v, ax + ox, ay + oy, { wob, lift: drag && drag.i === i });
+        if (blink[i] > 0) {
+          const a = Math.min(1, blink[i] / 0.3) * (0.55 + 0.45 * Math.sin(time * 40)), L = v.len * CS;
+          g.save(); g.fillStyle = `rgba(255,255,255,${0.35 * a})`; rr(g, ax + 2, ay + 2, (v.h ? L : CS) - 4, (v.h ? CS : L) - 4, 10); g.fill();
+          g.strokeStyle = RED; g.globalAlpha = Math.max(0, a); g.lineWidth = 4; g.shadowColor = RED; g.shadowBlur = 10; g.stroke(); g.restore();
+        }
         if (i === sel && !busy) drawSelection(v, ax + ox, ay + oy);
       }
       if (hint && !busy) drawHint();
@@ -515,14 +535,14 @@ export default {
       g.strokeStyle = on ? (name === 'hint' ? GOLD : 'rgba(142,202,230,.6)') : 'rgba(142,202,230,.2)'; g.lineWidth = 2; rr(g, b.x + 1, y + 1, b.w - 2, b.h - 2, 13); g.stroke();
       g.fillStyle = on ? '#fff' : '#7d88b8'; g.font = '700 15px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(label, b.x + b.w / 2, y + b.h / 2 + (sub ? -6 : 1));
-      if (sub) { g.fillStyle = on ? GOLD : '#7d88b8'; g.font = '600 11px system-ui, sans-serif'; g.fillText(sub, b.x + b.w / 2, y + b.h / 2 + 11); }
+      if (sub) { g.fillStyle = on ? GOLD : '#7d88b8'; g.font = '600 12px system-ui, sans-serif'; g.fillText(sub, b.x + b.w / 2, y + b.h / 2 + 11); }
     }
     function drawPlay() {
       drawBoard();
       // Titel
       g.fillStyle = '#fff'; g.font = '800 19px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(`Level ${lvl + 1} · ${NAMES[lvl]}`, W / 2, 30);
-      g.fillStyle = ICE; g.font = '600 12px system-ui, sans-serif';
+      g.fillStyle = ICE; g.font = '600 14px system-ui, sans-serif';
       const sub = exitAnim ? (exitAnim.moves <= exitAnim.prof ? `Profi! Nur ${exitAnim.moves} Züge!` : `Frei in ${exitAnim.moves} Zügen! Profi: ${exitAnim.prof}`)
         : hint ? `Tipp: noch ${hint.left} ${hint.left === 1 ? 'Zug' : 'Züge'} · folge dem grünen Rahmen`
         : lvl === 0 && !hist.length ? 'Zieh die Blöcke aus dem Weg!' : 'Bring den roten Schlitten nach rechts hinaus!';
@@ -538,8 +558,8 @@ export default {
       const left = MAX_HINTS - hintsUsed[lvl];
       btn('hint', 'Tipp', `${left} übrig`, left > 0 && !busy);
       btn('menu', '▦ Level wählen', '', true);
-      btn('done', '✔ Fertig für heute', '', true);
-      g.fillStyle = 'rgba(142,202,230,.7)'; g.font = '500 11px system-ui, sans-serif';
+      btn('done', 'Fertig für heute', '', true);
+      g.fillStyle = 'rgba(142,202,230,.85)'; g.font = '500 13px system-ui, sans-serif';
       g.fillText(ctx.input.isTouch ? 'Block ziehen: er gleitet nur entlang seiner Achse.' : 'Maus: ziehen · Tab/B: wählen · Pfeile: schieben', W / 2, 572);
     }
 
@@ -568,8 +588,8 @@ export default {
         g.textAlign = 'center'; g.textBaseline = 'middle';
         if (open) {
           g.fillStyle = '#fff'; g.font = '800 26px system-ui, sans-serif'; g.fillText(String(i + 1), t.x + t.w / 2 + sh, t.y + 30);
-          g.fillStyle = ICE; g.font = '600 11px system-ui, sans-serif'; g.fillText(`Profi ${LEVELS[i].min}`, t.x + t.w / 2 + sh, t.y + 54);
-          g.fillStyle = done ? GOLD : '#7d88b8'; g.font = '700 11px system-ui, sans-serif';
+          g.fillStyle = ICE; g.font = '600 12px system-ui, sans-serif'; g.fillText(`Profi ${LEVELS[i].min}`, t.x + t.w / 2 + sh, t.y + 54);
+          g.fillStyle = done ? GOLD : '#9aa6d6'; g.font = '700 12px system-ui, sans-serif';
           g.fillText(done ? `Du: ${bestMoves[i]}${bestMoves[i] <= LEVELS[i].min ? ' ★' : ''}` : 'neu', t.x + t.w / 2 + sh, t.y + 70);
         } else { lock(t.x + t.w / 2, t.y + 30); g.fillStyle = '#7d88b8'; g.font = '700 13px system-ui, sans-serif'; g.fillText(String(i + 1), t.x + t.w / 2, t.y + 60); }
       }
@@ -577,11 +597,11 @@ export default {
       const st = starsNow();
       g.font = '800 26px system-ui, sans-serif'; g.textAlign = 'center';
       for (let k = 0; k < 3; k++) { g.fillStyle = k < st ? GOLD : '#2c3a78'; g.fillText('★', W / 2 - 34 + k * 34, 468); }
-      g.fillStyle = ICE; g.font = '600 12px system-ui, sans-serif';
+      g.fillStyle = ICE; g.font = '600 13px system-ui, sans-serif';
       const need = n < 4 ? 4 : n < 8 ? 8 : 12;
       g.fillText(n >= 12 ? 'Alle Höfe befreit!' : `${n}/12 gelöst · bei ${need} Leveln gibt es ${'★'.repeat(st + 1)}`, W / 2, 500);
-      btn('doneSel', '✔ Fertig für heute', '', true);
-      g.fillStyle = 'rgba(142,202,230,.7)'; g.font = '500 11px system-ui, sans-serif';
+      btn('doneSel', 'Fertig für heute', '', true);
+      g.fillStyle = 'rgba(142,202,230,.85)'; g.font = '500 13px system-ui, sans-serif';
       g.fillText(ctx.input.isTouch ? 'Tippe ein Level an' : 'Anklicken oder Pfeile + Leertaste', W / 2, 582);
     }
 
@@ -594,6 +614,7 @@ export default {
         const d = v.tp - v.vp;
         if (Math.abs(d) < 0.002) v.vp = v.tp; else v.vp += d * Math.min(1, dt * (drag && drag.i === v.k ? 28 : 16));
       }
+      for (const k of Object.keys(blink)) { blink[k] -= dt; if (blink[k] <= 0) delete blink[k]; }
       for (const k of Object.keys(bumps)) { bumps[k].t += dt; if (bumps[k].t > 0.25) delete bumps[k]; }
       if (press) { press.t += dt; if (press.t > 0.2) press = null; }
       if (mode === 'play') {

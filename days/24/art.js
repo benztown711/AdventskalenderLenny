@@ -153,7 +153,7 @@ export function drawPower(g, x, y, t, kind) {
   if (kind === 'spread') { g.beginPath(); g.moveTo(0, 7); g.lineTo(0, -7); g.moveTo(0, 7); g.lineTo(-7, -4); g.moveTo(0, 7); g.lineTo(7, -4); g.stroke(); }
   if (kind === 'shield') { g.strokeStyle = C.green; g.beginPath(); g.arc(0, 0, 7, 0, 6.3); g.stroke(); circle(g, 0, 0, 3, '#fff'); }
   if (kind === 'heart') heart(g, 0, 1, 16, C.red, '#fff');
-  text(g, P.label, 0, r + 9, 8, P.color);
+  text(g, P.label, 0, r + 11, 12, P.color);
   g.restore();
 }
 

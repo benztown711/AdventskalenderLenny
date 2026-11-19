@@ -1,5 +1,9 @@
 // Türchen 4: Wichtel-Memo. Paare finden in drei Leveln, ab Level 2 mit Wichtel-Joker.
-export const howto = 'Finde alle gleichen Paare! Tippe zwei Karten nacheinander an, oder wähle mit den Pfeiltasten eine Karte und drücke Leertaste. Die Wichtel-Karte zeigt kurz alle Motive.';
+export const howto = {
+  touch: 'Tippe zwei Karten nacheinander an und finde alle gleichen Paare. Die Wichtel-Karte zeigt kurz alle Motive.',
+  keys: 'Wähle mit den Pfeiltasten eine Karte, Leertaste deckt sie auf. Finde alle gleichen Paare, die Wichtel-Karte zeigt kurz alle Motive.',
+};
+export const starsInfo = '★ alle 3 Level geschafft · ★★ höchstens 20 Fehlversuche · ★★★ höchstens 12';
 
 const W = 360, H = 560;
 const BX = 16, BY = 76, BW = 328, BH = 468, GAP = 10; // Spielfeld-Bereich unter der Titelzeile
@@ -142,7 +146,7 @@ export default {
     canvas.style.touchAction = 'none';
 
     let level = 0, cards = [], open = [], phase = 'intro', timers = [], sparks = [];
-    let matches = 0, errors = 0, moves = 0, peekDone = false, cur = 0, finished = false, time = 0;
+    let matches = 0, errors = 0, moves = 0, flipped = false, peekDone = false, cur = 0, finished = false, time = 0;
     const flakes = Array.from({ length: 36 }, () => ({
       x: Math.random() * W, y: Math.random() * H, v: 14 + Math.random() * 24, s: 0.8 + Math.random() * 1.6,
     }));
@@ -209,6 +213,7 @@ export default {
         ctx.audio.sfx('coin'); burst(a); burst(b);
         if (matches === LEVELS[level].pairs) {
           phase = 'clear'; ctx.audio.sfx('level');
+          if (level + 1 < LEVELS.length) ctx.progress({ stars: 1, score: Math.max(100, 1000 - 20 * errors), text: `Level ${level + 1} geschafft. Bis jetzt ${errors} Fehlversuche, für 3 Sterne sind höchstens 12 erlaubt.` });
           after(1.0, () => (level + 1 < LEVELS.length ? startLevel(level + 1) : finishGame()));
         }
       } else {
@@ -220,7 +225,7 @@ export default {
 
     function flip(c) {
       if (phase !== 'play' || c.up || c.matched || open.length >= 2) return;
-      setUp(c, true); open.push(c); ctx.audio.sfx('swoosh');
+      flipped = true; setUp(c, true); open.push(c); ctx.audio.sfx('swoosh');
       if (c.joker && !peekDone) {
         // Wichtel-Karte: beim ersten Aufdecken in diesem Level alle Karten 1 s zeigen
         peekDone = true; phase = 'peek'; ctx.audio.sfx('power');
@@ -287,7 +292,7 @@ export default {
       g.fillStyle = '#ffd166'; g.font = 'bold 22px system-ui, sans-serif';
       g.fillText('Wichtel-Memo', w / 2, 26);
       g.fillStyle = '#8ecae6'; g.font = '14px system-ui, sans-serif';
-      g.fillText(phase === 'intro' ? 'Merk dir alle Motive!' : `Level ${level + 1} von ${LEVELS.length} · ${L.cols}x${L.rows} Karten`, w / 2, 50);
+      g.fillText(phase === 'intro' ? 'Merk dir alle Motive!' : !flipped ? (ctx.input.isTouch ? 'Tippe zwei gleiche Karten an' : 'Pfeile wählen, Leertaste deckt auf') : `Level ${level + 1} von ${LEVELS.length} · ${L.cols}x${L.rows} Karten`, w / 2, 50);
 
       for (const c of cards) drawCard(c);
 

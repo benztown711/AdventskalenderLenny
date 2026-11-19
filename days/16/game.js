@@ -1,18 +1,24 @@
 // Türchen 16: Schatzinsel (Buddel-Logikspiel im Piraten-Look)
-import { LEVELS, generate, buildNb } from './board.js';
+import { LEVELS, generate, buildNb, findSure } from './board.js';
 
-export const howto = 'Tippe auf Sandfelder und buddle los! Eine Zahl verrät, wie viele Krabben in den 8 Feldern rundherum lauern. Flagge setzen: Knopf unten, langes Drücken oder Rechtsklick. Tastatur: Pfeiltasten, Leertaste = graben, X = Flagge.';
+export const howto = {
+  touch: 'Tippe Sandfelder an und grabe alle ohne Krabbe aus: Die Zahl zeigt, wie viele Krabben direkt daneben lauern. Krabbe vermutet? Tippe unten auf "Flagge" oder drücke lange auf ein Feld.',
+  keys: 'Klicke Sandfelder an (oder Pfeiltasten + Leertaste) und grabe alle ohne Krabbe aus: Die Zahl zeigt, wie viele Krabben direkt daneben lauern. Flagge setzen: Rechtsklick oder Taste X.',
+};
+export const starsInfo = '★ Insel 1 geschafft · ★★ Insel 2 · ★★★ Insel 3';
 
 const W = 360, H = 600;
-const GRID_TOP = 52, GRID_H = 432, GRID_W = 336;
-const BTN = { x: 15, y: 528, w: 330, h: 58 };
+const GRID_TOP = 50, GRID_H = 392, GRID_W = 336;
+const BTN = { x: 15, y: 540, w: 330, h: 52 };
+const GOAL = 'Grabe alle Felder ohne Krabbe aus. Die Zahl sagt, wie viele Krabben direkt daneben lauern.';
+const START_HEARTS = 5, maxHearts = idx => START_HEARTS + idx;
 const NUMCOL = ['', '#8ecae6', '#06d6a0', '#ff6b8b', '#c77dff', '#ffd166', '#ff9e4a', '#ffffff', '#ffffff'];
-const TIPS = [
-  'Krabbe vermutet? Flagge setzen: Knopf unten, langes Drücken oder Rechtsklick.',
+const tips = (touch, hearts) => [
+  touch ? 'Krabbe vermutet? Setz eine Flagge: unten "Flagge" tippen oder lange drücken.' : 'Krabbe vermutet? Flagge setzen: Rechtsklick oder Taste X.',
   'Zeigt eine 1 und daneben steht schon eine Flagge: Alle anderen Nachbarn sind sicher!',
   'Such die Truhen! Eine davon enthält ein Fernrohr, das eine Krabbe verrät.',
   'Tipp auf eine Zahl mit genug Flaggen drumherum: Der Rest wird aufgedeckt.',
-  'Keine Sorge, du hast 3 Herzen. Aber Krabben zwicken ganz schön!',
+  `Du hast noch ${hearts} Herzen. Krabben zwicken ganz schön!`,
 ];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const easeOutBack = p => { const c1 = 1.7, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); };
@@ -29,7 +35,8 @@ export default {
     let crab = null, nums = null, chest = null;           // Brett (erst nach dem ersten Graben)
     let rev, flag, spy, shownAt, hitC, danceAt, flagT, bumpAt;
     let revealedSafe = 0, safeTotal = 0, crabsHit = 0, chestsFound = 0;
-    let hearts = 3, score = 0, timer = 0, heartPop = [0, 0, 0];
+    let hearts = START_HEARTS, score = 0, timer = 0, heartPop = new Array(8).fill(0);
+    let firstHit = false, exampleDone = false, example = null, hitHL = null;
     let state = 'play';                                     // play | celebrate | trans | lost
     let mode = 'dig';
     let cur = 0, showCur = false, press = null, hold = {};
@@ -54,7 +61,9 @@ export default {
       timers = []; fxs = []; parts = []; runners = []; press = null; firstDig = false;
       cur = ((r / 2) | 0) * c + ((c / 2) | 0); showCur = false;
       palmSeed = [Math.random() * 6, Math.random() * 6, Math.random() * 6, Math.random() * 6];
-      help = { text: 'Tippe ein Sandfeld an, um zu graben. Der erste Spatenstich ist immer sicher!', until: T + 60 };
+      example = null; hitHL = null;
+      help = { text: 'Tippe ein Sandfeld an. Der erste Spatenstich ist immer sicher!', until: T + 60 };
+      if (idx > 0) exampleDone = true;
       state = 'play';
       hud();
     }
@@ -105,13 +114,23 @@ export default {
       if (crab[i]) { hitCrab(i); checkWin(); return; }
       ctx.audio.sfx('click');
       revealFrom([i]);
-      if (!firstDig) {
-        firstDig = true;
-        ctx.toast('Zahl = Krabben ringsum!', 3500);
-        say('Die Zahl zeigt, wie viele Krabben in den 8 Feldern rundherum stecken.', 12);
-        nextTip = T + 13;
-      }
+      if (!firstDig) { firstDig = true; help = { text: '', until: 0 }; nextTip = T + 16; }
+      if (example && example.cell === i) example = null;
+      if (L === 0 && !exampleDone) later(maxShown() + 0.35, showExample);
       checkWin();
+    }
+
+    // Beispiel-Hinweis auf Insel 1: ein eindeutig sicheres oder gefährliches Feld (aus den offenen Zahlen gelöst)
+    function showExample() {
+      if (exampleDone || state !== 'play' || !crab) return;
+      const known = new Uint8Array(N);
+      for (let i = 0; i < N; i++) if (spy[i] || (rev[i] && crab[i])) known[i] = 1;
+      const s = findSure(nbr, nums, crab, rev, known);
+      if (!s) return;
+      exampleDone = true;
+      example = { cell: s.cell, kind: s.kind, clue: s.clue, t0: T, until: T + 12 };
+      say(s.kind === 'safe' ? 'Hier ist es sicher: grabe dieses Feld aus!' : 'Hier lauert sicher eine Krabbe, setz eine Flagge.', 12);
+      ctx.audio.sfx('power');
     }
 
     function revealFrom(starts) {
@@ -142,6 +161,8 @@ export default {
       const x = cx(i), y = cy(i);
       hearts = Math.max(0, hearts - 1);
       heartPop[hearts] = T;
+      hitHL = { i, until: T + (firstHit ? 2.2 : 6) };
+      if (!firstHit) { firstHit = true; say('Autsch! Schau auf die Zahlen: Eine 1 heißt, genau eine Krabbe grenzt an dieses Feld.', 9); }
       flashT = T; shakeT = T;
       ctx.audio.sfx('hit'); ctx.fx.shake();
       burst(x, y, '#ef476f', 12, 110);
@@ -173,6 +194,7 @@ export default {
     function toggleFlag(i) {
       if (state !== 'play' || i < 0 || rev[i]) return;
       if (spy[i]) { bumpAt[i] = T; ctx.audio.sfx('bad'); return; }
+      if (example && example.cell === i) example = null;
       flag[i] ^= 1; flagT[i] = T;
       ctx.audio.sfx(flag[i] ? 'pop' : 'tick');
       burst(cx(i), cy(i), '#f1d38b', 5, 50, 200, 2.5);
@@ -229,6 +251,7 @@ export default {
       const bonus = Math.round(Math.max(0, 1 - timer / cfg.par) * 60);
       score += bonus; hud();
       ctx.save('insel', Math.max(bestIsland, ctx.load('insel', 0), L + 1));
+      ctx.progress({ stars: L + 1, score, text: L >= LEVELS.length - 1 ? 'Alle drei Inseln gemeistert!' : `${L + 1} von 3 Inseln geschafft. Für den nächsten Stern schaffe Insel ${L + 2}.` });
       press = null;
       later(T + waitAnim, () => {
         ctx.audio.sfx('level'); ctx.fx.confetti(); rain = 3.2;
@@ -266,8 +289,8 @@ export default {
     }
 
     function nextIsland() {
-      const gain = hearts < 3;
-      hearts = Math.min(3, hearts + 1);
+      const gain = hearts < maxHearts(L + 1);
+      hearts = Math.min(maxHearts(L + 1), hearts + 1);
       setupIsland(L + 1);
       const cr = cfg.crabs;
       ctx.toast(`Insel ${L + 1}: ${cr} Krabben!${gain ? ' +1 Herz' : ''}`, 3000);
@@ -493,8 +516,9 @@ export default {
     function pill(x, y, w, h) { g.fillStyle = 'rgba(8,16,48,.62)'; rr(x, y, w, h, h / 2); g.fill(); g.strokeStyle = 'rgba(142,202,230,.25)'; g.lineWidth = 1; g.stroke(); }
 
     function drawHeader() {
-      pill(8, 6, 98, 34);
-      for (let k = 0; k < 3; k++) drawHeart(30 + k * 31, 23, 1.05, k < hearts, T - heartPop[k] < 0.5 && k >= hearts ? (T - heartPop[k]) / 0.5 : 0);
+      const slots = maxHearts(L), sp = Math.min(22, 120 / slots);
+      pill(8, 6, slots * sp + 14, 34);
+      for (let k = 0; k < slots; k++) drawHeart(8 + 7 + sp * (k + 0.5), 23, sp / 21, k < hearts, T - heartPop[k] < 0.5 && k >= hearts ? (T - heartPop[k]) / 0.5 : 0);
       const mm = Math.floor(timer / 60), ss = Math.floor(timer % 60);
       pill(W / 2 - 34, 8, 68, 30);
       g.font = 'bold 15px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#cfe6f5';
@@ -513,11 +537,20 @@ export default {
     }
 
     function drawFooter() {
-      g.font = '600 13px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      const lines = wrapText(help.text, 330);
-      g.fillStyle = 'rgba(8,16,48,.55)'; rr(12, 492, 336, 30, 10); g.fill();
-      g.fillStyle = '#e6f3fb';
-      lines.slice(0, 2).forEach((ln, k) => g.fillText(ln, W / 2, 507 + (k - (Math.min(2, lines.length) - 1) / 2) * 14.5));
+      g.font = '600 14px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      // Dauerhafte Zielzeile (unten), darüber bei Bedarf der Hinweis des Augenblicks
+      const goal = wrapText(GOAL, 318), gh2 = goal.length * 17 + 10, gTop = BTN.y - 6 - gh2;
+      g.fillStyle = 'rgba(8,16,48,.78)'; rr(12, gTop, 336, gh2, 10); g.fill();
+      g.strokeStyle = 'rgba(255,209,102,.45)'; g.lineWidth = 1.5; g.stroke();
+      g.fillStyle = '#fff3b0';
+      goal.forEach((ln, k) => g.fillText(ln, W / 2, gTop + 5 + 8.5 + k * 17));
+      if (help.text && T < help.until) {
+        const lines = wrapText(help.text, 318).slice(0, 2), h2 = lines.length * 17 + 10, top = gTop - 4 - h2;
+        g.fillStyle = 'rgba(8,16,48,.85)'; rr(12, top, 336, h2, 10); g.fill();
+        g.strokeStyle = 'rgba(142,202,230,.5)'; g.lineWidth = 1.5; g.stroke();
+        g.fillStyle = '#e6f3fb';
+        lines.forEach((ln, k) => g.fillText(ln, W / 2, top + 5 + 8.5 + k * 17));
+      }
       // Modus-Knopf
       for (const [k, m] of [[0, 'dig'], [1, 'flag']]) {
         const x = BTN.x + k * BTN.w / 2, on = mode === m, w = BTN.w / 2 - 3;
@@ -555,6 +588,27 @@ export default {
       }
     }
 
+    function drawHighlights() {
+      if (hitHL && T < hitHL.until) {
+        const k = 0.5 + 0.5 * Math.sin(T * 9);
+        for (const j of nbr[hitHL.i]) if (rev[j] && crab && !crab[j] && nums[j] > 0) {
+          g.save(); g.strokeStyle = `rgba(255,107,139,${0.6 + 0.4 * k})`; g.lineWidth = 3.5; g.shadowColor = '#ff3355'; g.shadowBlur = 10;
+          rr(gx + (j % c) * cs + 1, gy + ((j / c) | 0) * cs + 1, cs - 2, cs - 2, 7); g.stroke(); g.restore();
+        }
+      }
+      if (example && T < example.until) {
+        const col = example.kind === 'safe' ? '#06d6a0' : '#ff3355', k = 0.5 + 0.5 * Math.sin(T * 7), x = cx(example.cell), y = cy(example.cell);
+        g.save(); g.shadowColor = col; g.shadowBlur = 12; g.strokeStyle = col; g.lineWidth = 4;
+        const cl = example.clue;
+        if (cl !== undefined && rev[cl]) { g.globalAlpha = 0.7; g.lineWidth = 2.5; rr(gx + (cl % c) * cs + 1, gy + ((cl / c) | 0) * cs + 1, cs - 2, cs - 2, 7); g.stroke(); g.lineWidth = 4; g.globalAlpha = 1; }
+        g.beginPath(); g.arc(x, y, cs * (0.5 + 0.12 * k), 0, 6.3); g.stroke();
+        g.fillStyle = col; g.font = 'bold 14px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.lineWidth = 3; g.strokeStyle = '#0b1437'; const lab = example.kind === 'safe' ? 'sicher' : 'Krabbe!';
+        g.strokeText(lab, x, y - cs * 0.78); g.fillText(lab, x, y - cs * 0.78);
+        g.restore();
+      }
+    }
+
     function drawDancers() {
       for (let i = 0; i < N; i++) {
         const d = T - danceAt[i];
@@ -588,6 +642,7 @@ export default {
       drawIsland();
       for (let i = 0; i < N; i++) drawTile(i, showCur && cur === i && state === 'play' && !rev[i] ? 1 : 0);
       drawDancers();
+      drawHighlights();
       // Palmen am Rand
       drawPalm(gx - 4, gy + 6, -1, palmSeed[0], true);
       drawPalm(gx + gw + 4, gy + 4, 1, palmSeed[1], true);
@@ -652,7 +707,7 @@ export default {
         }
       }
       // Hilfe-Zeile
-      if (T > help.until && T > nextTip && state === 'play') { help = { text: TIPS[tipIdx++ % TIPS.length], until: T + 8 }; nextTip = T + 9; }
+      if (T > help.until && T > nextTip && state === 'play' && firstDig) { const tl = tips(ctx.input.isTouch, hearts); help = { text: tl[tipIdx++ % tl.length], until: T + 7 }; nextTip = T + 12; }
       // Goldregen
       if (rain > 0) {
         rain -= dt;

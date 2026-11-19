@@ -3,7 +3,11 @@ import * as A from './art.js';
 import { createMusic } from './music.js';
 import { createFinale } from './finale.js';
 
-export const howto = 'Zieh den Raketen-Schlitten mit dem Finger oder der Maus (oder Pfeiltasten). Schneebälle fliegen von selbst! Der Lawinen-Knopf (oder Leertaste) räumt den Himmel frei. Hol die Geschenke vom Grummel-Yeti zurück!';
+export const howto = {
+  touch: 'Zieh den Schlitten mit dem Finger, die Schneebälle fliegen von selbst. Der Lawine-Knopf unter dem Bild räumt den Himmel frei.',
+  keys: 'Fliege mit den Pfeiltasten, die Schneebälle fliegen von selbst. Die Leertaste löst die Lawine aus und räumt den Himmel frei.',
+};
+export const starsInfo = '★ geschafft · ★★ mit bis zu 3 Neustarts · ★★★ ohne Neustart';
 
 const W = 360, H = 560;
 const { C } = A;
@@ -18,7 +22,7 @@ export default {
   create(ctx) {
     const { canvas, g, pos } = ctx.makeCanvas(W, H);
     const audio = ctx.audio, music = createMusic(audio);
-    const T = (new URLSearchParams(location.search).get('t24') || '').split(',');
+    const T = (new URLSearchParams(location.search).get('t24') || '').split(',').filter(Boolean);
     const GOD = T.includes('gott'), SPEED = Number((T.find(s => /^x\d+$/.test(s)) || 'x1').slice(1)) || 1;
     const touch = ctx.input.isTouch;
 
@@ -34,7 +38,7 @@ export default {
     let timeline = [], tl = 0, giftT = 3, pwT = 14, batT = 6;
     let fort = null, eye = null, boss = null, lawFx = 0, downT = 0, hitGate = 0, pingGate = 0, shotSnd = 0;
     let drag = null, dragOff = 60;
-    const LB = { x: W - 40, y: H - 44, r: 27 };
+    let flyHint = null, hintShown = false;
 
     // Hintergrund-Deko (Wald von oben)
     const decor = Array.from({ length: 46 }, (_, i) => ({ x: rnd(0, W), y: rnd(0, H + 120), s: rnd(9, 18), k: i % 9 === 0 ? 'house' : i % 5 === 0 ? 'rock' : 'tree', s2: rnd(0.6, 1) }));
@@ -61,15 +65,15 @@ export default {
     // ---------- Story ----------
     const NAMES = { yeti: 'Grummel-Yeti', yetiFroh: 'Yeti (froh!)', wichtel: 'Wichtel-Funk', du: 'Du', erz: '' };
     function tell(lines, then) { story = { lines, i: 0, ch: 0, t: 0, then }; mode = 'story'; }
-    function advance(all) {
+    function advance(all, now) {
       if (!story) return;
       const L = story.lines[story.i];
-      if (!all && story.ch < L.text.length) { story.ch = L.text.length; return; }
+      if (!all && !now && story.ch < L.text.length) { story.ch = L.text.length; return; }
       story.i = all ? story.lines.length : story.i + 1; story.ch = 0; story.t = 0; sfx('click');
       if (story.i >= story.lines.length) { const f = story.then; story = null; f(); }
     }
-    const steer = touch ? 'Zieh mit dem Finger, der Schlitten fliegt mit.' : 'Maus ziehen oder Pfeiltasten zum Fliegen.';
-    const lawTip = touch ? 'Der blaue Knopf unten rechts ist die LAWINE!' : 'Leertaste oder der blaue Knopf = LAWINE!';
+    const steer = touch ? 'Zieh mit dem Finger, der Schlitten fliegt mit.' : 'Pfeiltasten oder Maus ziehen zum Fliegen.';
+    const lawTip = touch ? 'Der Knopf LAWINE unter dem Bild räumt den Himmel frei!' : 'Die Leertaste löst die LAWINE aus!';
     const INTRO = [
       { who: 'erz', text: 'Heiligabend. Alles ist bereit für die Bescherung …' },
       { who: 'erz', text: '… doch plötzlich sind ALLE Geschenke weg!' },
@@ -115,6 +119,7 @@ export default {
       const bonus = hearts * 200 + lawinen * 300;
       addScore(bonus); sfx('level'); ebulToSparkle();
       anim = { name: 'clear', t: 0, dur: 3, bonus }; mode = 'anim';
+      if (!shortcut) ctx.progress({ stars: 0, score, text: `Phase ${phase} geschafft! Für Sterne musst du das ganze Finale bis zum Ende spielen.` });
       for (const it of items) it.magnet = true;
     }
     function ebulToSparkle() {
@@ -445,15 +450,14 @@ export default {
     // ---------- Eingabe ----------
     function setTarget(p) { P.tx = p.x; P.ty = p.y - dragOff; }
     function btnHit(b, x, y) { return x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h; }
-    const SKIP = { x: W - 112, y: 8, w: 104, h: 40 };
+    const SKIP = { x: W - 142, y: 6, w: 134, h: 46 };
     const LOST_BTNS = [{ x: 60, y: 300, w: 240, h: 54, act: 'retry' }, { x: 100, y: 372, w: 160, h: 44, act: 'quit' }];
     function tap(x, y) {
       if (mode === 'menu') { for (const b of menu.btns) if (btnHit(b, x, y)) { sfx('click'); b.fn(); } return true; }
-      if (mode === 'story') { if (btnHit(SKIP, x, y)) advance(true); else advance(false); return true; }
+      if (mode === 'story') { if (btnHit(SKIP, x, y)) advance(true); else advance(false, true); return true; }
       if (mode === 'lost') { for (const b of LOST_BTNS) if (btnHit(b, x, y)) { sfx('click'); b.act === 'retry' ? retry() : quit(); } return true; }
       if (mode === 'finale') { finale.tap(x, y); return true; }
-      if (mode === 'play' && d2(x, y, LB.x, LB.y) < (LB.r + 10) ** 2) { lawine(); return true; }
-      return false;
+            return false;
     }
     ctx.on(canvas, 'pointerdown', e => {
       e.preventDefault();
@@ -469,12 +473,14 @@ export default {
     const endDrag = e => { if (e.pointerId === drag) { drag = null; P.tx = null; } };
     ctx.on(canvas, 'pointerup', endDrag); ctx.on(canvas, 'pointercancel', endDrag);
     ctx.input.onPress(n => {
-      if (mode === 'story' && (n === 'a' || n === 'b')) return advance(n === 'b');
+      if (mode === 'story' && (n === 'a' || n === 'b')) return advance(n === 'b', true);
       if (mode === 'play' && (n === 'a' || n === 'b')) return lawine();
       if (mode === 'lost') { if (n === 'a') retry(); if (n === 'b') quit(); return; }
       if (mode === 'finale') return finale.key(n);
       if (mode === 'menu' && n === 'a') menu.btns[0].fn();
     });
+    let padLabel = 'Lawine';
+    ctx.input.pad({ a: padLabel });
     ctx.onPause(p => { if (p) drag = null; });
 
     function retry() { restarts++; tries[phase]++; startPhase(phase); }
@@ -532,12 +538,13 @@ export default {
       }
       const movable = mode === 'play' || mode === 'card' || (mode === 'anim' && anim.name === 'clear');
       if (movable) movePlayer(dt);
-      if (mode === 'card') { card.t += dt; if (card.t > 2.3) { mode = 'play'; card = null; inv = 0; } }
+      if (mode === 'card') { card.t += dt; if (card.t > 2.3) { mode = 'play'; card = null; inv = 0; if (phase === 1 && !hintShown && !T.length) { hintShown = true; flyHint = { t: 0 }; } } }
       if (mode === 'down') { downT += dt; P.rot += dt * 9; P.y += 60 * dt; if (downT > 1.3) mode = 'lost'; }
       if (mode === 'anim') updateAnim(dt);
 
       if (mode === 'play') {
         phaseT += dt; inv = Math.max(0, inv - dt); lawFx = Math.max(0, lawFx - dt);
+        if (flyHint) { const ax = ctx.input.axis(); flyHint.t += dt; if (flyHint.t > 3 || P.tx != null || ax.x || ax.y) flyHint = null; }
         if (shield > 0) shield -= dt;
         if (power && (powerT -= dt) <= 0) { power = null; pop(P.x, P.y - 30, 'Power-up vorbei', '#fff', 12); }
         if ((P.fire -= dt) <= 0) fire();
@@ -754,12 +761,12 @@ export default {
     function drawHud() {
       for (let i = 0; i < 5; i++) A.heart(g, 16 + i * 21, 18, 19, i < hearts ? C.red : 'rgba(255,255,255,.18)', i < hearts ? '#fff' : null);
       A.drawGift(g, 18, 42, 14, C.green); A.text(g, `${gifts}`, 31, 43, 13, '#fff', 'left');
-      if (power) { const pc = A.POWER[power]; A.text(g, pc.label, 64, 43, 11, pc.color, 'left'); g.fillStyle = 'rgba(255,255,255,.2)'; g.fillRect(64, 51, 50, 3); g.fillStyle = pc.color; g.fillRect(64, 51, 50 * powerT / 15, 3); }
+      if (power) { const pc = A.POWER[power]; A.text(g, pc.label, 64, 43, 12, pc.color, 'left'); g.fillStyle = 'rgba(255,255,255,.2)'; g.fillRect(64, 51, 50, 3); g.fillStyle = pc.color; g.fillRect(64, 51, 50 * powerT / 15, 3); }
       if (phase === 1 && mode === 'play') {
         const k = clamp(phaseT / 90, 0, 1);
         g.fillStyle = 'rgba(255,255,255,.15)'; A.rr(g, 130, 12, 150, 8, 4); g.fill(); g.fillStyle = C.ice; A.rr(g, 130, 12, 150 * k, 8, 4); g.fill();
         A.drawSleigh(g, 130 + 150 * k, 16, time, { scale: 0.32, noFlame: true });
-        A.text(g, 'Festung', 312, 16, 10, '#cfe0ff');
+        A.text(g, 'Festung', 316, 16, 12, '#cfe0ff');
       }
       if (phase === 2 && mode === 'play' && fort) {
         const left = enemies.filter(e => e.type === 'turret').length;
@@ -767,21 +774,23 @@ export default {
         else if (eye && fort.open) bossBar('TOR-AUGE', eye.hp / eye.maxHp, C.violet);
       }
       if (boss && boss.st === 'fight') bossBar('GRUMMEL-YETI', boss.hp / boss.maxHp, boss.stage === 3 ? C.red : boss.stage === 2 ? '#ff9f43' : C.gold);
-      // Lawinen-Knopf
+      // Lawinen-Anzeige (der Knopf liegt auf Touch unter der Bühne, nicht im Flugbereich)
       if (mode === 'play' || mode === 'card') {
-        const on = lawinen > 0;
-        g.globalAlpha = on ? 1 : 0.35;
-        A.circle(g, LB.x, LB.y, LB.r + 4, 'rgba(142,202,230,.25)');
-        A.circle(g, LB.x, LB.y, LB.r, '#2b5c9e'); g.strokeStyle = C.ice; g.lineWidth = 2.5; g.beginPath(); g.arc(LB.x, LB.y, LB.r, 0, 6.3); g.stroke();
-        A.flake(g, LB.x, LB.y - 4, 12, '#fff', time * 0.5, 2.2);
-        A.text(g, 'LAWINE', LB.x, LB.y + 15, 8, '#fff');
-        A.circle(g, LB.x + 20, LB.y - 20, 10, C.gold); A.text(g, `${lawinen}`, LB.x + 20, LB.y - 19.5, 12, '#3a2400', 'center', null);
-        if (!touch) A.text(g, 'Leertaste', LB.x, LB.y - 38, 9, '#cfe0ff');
+        g.globalAlpha = lawinen > 0 ? 1 : 0.45;
+        A.flake(g, 18, 66, 12, '#fff', time * 0.5, 2.2);
+        A.text(g, touch ? `Lawine: ${lawinen}` : `Lawine: ${lawinen} (Leertaste)`, 32, 67, 12, C.ice, 'left');
+        g.globalAlpha = 1;
+      }
+      // Erster Flug: kurzer, großer Hinweis
+      if (flyHint && mode === 'play') {
+        const a = Math.min(1, flyHint.t * 4, (3 - flyHint.t) * 4), ls = touch ? ['Finger ziehen = fliegen', 'Der Schlitten schießt von selbst'] : ['Pfeiltasten = fliegen', 'Leertaste = Lawine'];
+        g.globalAlpha = Math.max(0, a); g.fillStyle = 'rgba(5,9,31,.78)'; A.rr(g, 24, 318, W - 48, 76, 16); g.fill(); g.strokeStyle = C.gold; g.lineWidth = 2; g.stroke();
+        A.text(g, ls[0], W / 2, 343, 20, C.gold, 'center', null); A.text(g, ls[1], W / 2, 373, 16, '#fff', 'center', null);
         g.globalAlpha = 1;
       }
     }
     function bossBar(name, k, color) {
-      A.text(g, name, W - 12, 14, 11, '#fff', 'right');
+      A.text(g, name, W - 12, 14, 12, '#fff', 'right');
       g.fillStyle = 'rgba(5,9,31,.7)'; A.rr(g, 122, 22, W - 134, 11, 5); g.fill();
       g.fillStyle = color; A.rr(g, 124, 24, Math.max(0, (W - 138) * k), 7, 3.5); g.fill();
     }
@@ -816,10 +825,10 @@ export default {
       for (const wd of words) { const test = line ? line + ' ' + wd : wd; if (g.measureText(test).width > maxW && line) { lines.push(line); line = wd; } else line = test; }
       lines.push(line);
       for (const ln of lines) { const vis = shown.slice(count, count + ln.length); g.fillText(vis, tx, y); count += ln.length + 1; y += 21; }
-      if (story.ch >= L.text.length) { g.globalAlpha = 0.5 + 0.5 * Math.sin(time * 6); A.text(g, touch ? 'Tippen ▸' : 'Klick / Leertaste ▸', bx + bw - 14, by + bh - 14, 11, C.gold, 'right'); g.globalAlpha = 1; }
+      if (story.ch >= L.text.length) { g.globalAlpha = 0.5 + 0.5 * Math.sin(time * 6); A.text(g, touch ? 'Tippen ▸' : 'Klick / Leertaste ▸', bx + bw - 14, by + bh - 14, 13, C.gold, 'right'); g.globalAlpha = 1; }
       // Überspringen
-      g.fillStyle = 'rgba(11,20,55,.85)'; A.rr(g, SKIP.x, SKIP.y + 6, SKIP.w, 28, 14); g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; g.stroke();
-      A.text(g, 'Überspringen ▸▸', SKIP.x + SKIP.w / 2, SKIP.y + 20, 11, '#fff', 'center', null);
+      g.fillStyle = 'rgba(11,20,55,.9)'; A.rr(g, SKIP.x, SKIP.y, SKIP.w, SKIP.h, 23); g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; g.stroke();
+      A.text(g, 'Überspringen ▸▸', SKIP.x + SKIP.w / 2, SKIP.y + SKIP.h / 2 + 1, 14, '#fff', 'center', null);
     }
     function drawCard() {
       const t = card.t, k = t < 0.35 ? t / 0.35 : t > 1.9 ? Math.max(0, 1 - (t - 1.9) / 0.4) : 1;
@@ -837,15 +846,15 @@ export default {
       g.fillStyle = 'rgba(5,9,31,.78)'; g.fillRect(0, 0, W, H);
       A.text(g, 'Bruchlandung!', W / 2, 170, 32, C.ice);
       A.drawSleigh(g, W / 2, 228, time, { rot: Math.PI * 0.9 + Math.sin(time * 3) * 0.2, noFlame: true });
-      A.text(g, `Keine Sorge: Du startest wieder bei Phase ${phase}.`, W / 2, 266, 13, '#fff');
+      A.text(g, `Keine Sorge: Du startest wieder bei Phase ${phase}.`, W / 2, 266, 14, '#fff');
       for (const b of LOST_BTNS) {
         const main = b.act === 'retry';
         A.rr(g, b.x, b.y, b.w, b.h, b.h / 2); g.fillStyle = main ? C.gold : 'rgba(255,255,255,.12)'; g.fill();
         if (main) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke(); }
         A.text(g, main ? `Nochmal! (Phase ${phase})` : 'Aufhören', W / 2, b.y + b.h / 2 + 1, main ? 19 : 14, main ? '#3a2400' : '#fff', 'center', null);
       }
-      A.text(g, `Neustarts bisher: ${restarts}`, W / 2, 450, 12, '#cfe0ff');
-      A.text(g, restarts < 3 ? `Bis 3 Neustarts gibt es noch 2 Sterne.` : 'Weiter so, du schaffst das!', W / 2, 470, 12, '#cfe0ff');
+      A.text(g, `Neustarts bisher: ${restarts}`, W / 2, 448, 14, '#cfe0ff');
+      A.text(g, restarts < 3 ? 'Mit bis zu 3 Neustarts: 2 Sterne.' : 'Weiter so, du schaffst das!', W / 2, 474, 15, C.gold);
     }
     function drawMenu() {
       const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#060c26'); sky.addColorStop(1, '#1d2b6b');
@@ -907,6 +916,8 @@ export default {
     }
 
     ctx.loop(dt => {
+      const want = mode === 'play' || mode === 'card' ? 'Lawine' : 'Weiter';
+      if (want !== padLabel) { padLabel = want; ctx.input.pad({ a: padLabel }); }
       const steps = SPEED;
       for (let i = 0; i < steps; i++) update(dt);
       draw();

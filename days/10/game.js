@@ -1,5 +1,9 @@
 // Türchen 10: Mauerbrecher – Schneeball, Schlitten und Geschenke-Mauern
-export const howto = 'Ziehe den Schlitten mit Finger, Maus oder den Pfeiltasten. Tippen oder Leertaste startet den Schneeball. Räume alle Geschenke, Lebkuchen und Eisblöcke ab und fang die Extras!';
+export const howto = {
+  touch: 'Ziehe den Schlitten mit dem Finger, tippe zum Starten des Schneeballs. Räume alle Geschenke und Eisblöcke ab und fang die Extras!',
+  keys: 'Bewege den Schlitten mit den Pfeiltasten oder der Maus, Leertaste startet den Schneeball. Räume alle Geschenke und Eisblöcke ab und fang die Extras!',
+};
+export const starsInfo = '★ ab Level 2 geschafft · ★★ ab Level 4 · ★★★ alle 6 Level';
 
 const W = 360, H = 560, COLS = 9, BW = 36, BH = 18, TOP = 70, WALL_TOP = 6;
 const PY = 512, PH = 14, R = 6.5, LOSS_Y = PY + PH + 16;
@@ -207,6 +211,7 @@ export default {
       ctx.audio.sfx('level'); shake(3);
       ctx.fx.confetti(40);
       bannerTxt = lvl >= MAX_LEVEL ? 'Alles geschafft!' : 'Level geschafft!'; bannerT = 1.8;
+      if (lvl < MAX_LEVEL && (cleared === 2 || cleared === 4)) ctx.progress({ stars: starsFor(cleared), score, text: cleared === 2 ? 'Level 2 geschafft: erster Stern! Schaffe Level 4 für den zweiten.' : 'Level 4 geschafft: zweiter Stern! Räume alle 6 Level ab für den dritten.' });
       popup(W / 2, 300, `+${100 + bonus}`, '#ffd166');
       if (lvl >= MAX_LEVEL) { ctx.save('level', 1); ctx.timeout(() => end(true), 1700); }
       else ctx.timeout(() => loadLevel(lvl + 1), 1800);
@@ -219,9 +224,10 @@ export default {
       if (lives <= 0) { mode = 'over'; ctx.timeout(() => end(false), 900); }
       else { newBall(); bannerTxt = lives === 1 ? 'Letztes Leben!' : `Noch ${lives} Leben`; bannerT = 1.5; }
     }
+    const starsFor = n => (n >= MAX_LEVEL ? 3 : n >= 4 ? 2 : n >= 2 ? 1 : 0);
     function end(won) {
       if (finished) return; finished = true;
-      const st = cleared >= MAX_LEVEL ? 3 : cleared >= 4 ? 2 : cleared >= 2 ? 1 : 0;
+      const st = starsFor(cleared);
       let text;
       if (won) text = 'Die ganze Mauer ist weg! Du bist ein echter Mauerbrecher-Meister.';
       else if (cleared < 2) text = `Du hast ${cleared} Level geschafft. Schaffe Level 2 für den ersten Stern!`;
@@ -479,8 +485,9 @@ export default {
       const t = clamp(b.off / (pw / 2), -1, 1), a = t * 0.9;
       g.fillStyle = 'rgba(255,255,255,.55)';
       for (let i = 1; i <= 5; i++) { const d = 14 + i * 15; g.beginPath(); g.arc(b.x + Math.sin(a) * d, b.y - Math.cos(a) * d, 2.2 - i * 0.2, 0, 6.3); g.fill(); }
-      g.globalAlpha = 0.6 + 0.4 * Math.sin(time * 5); g.textAlign = 'center'; g.font = '700 15px system-ui, sans-serif'; g.fillStyle = '#fff';
-      g.fillText(ctx.input.isTouch ? 'Antippen zum Start' : 'Klick oder Leertaste zum Start', W / 2, 462); g.globalAlpha = 1;
+      g.globalAlpha = 0.85 + 0.15 * Math.sin(time * 5); g.textAlign = 'center'; g.font = '700 15px system-ui, sans-serif'; g.fillStyle = '#fff'; g.lineWidth = 4; g.lineJoin = 'round'; g.strokeStyle = 'rgba(11,20,55,.9)';
+      const hint = ctx.input.isTouch ? 'Schlitten ziehen, Antippen = Start' : 'Pfeile bewegen, Leertaste = Start';
+      g.strokeText(hint, W / 2, 462); g.fillText(hint, W / 2, 462); g.globalAlpha = 1;
     }
     function drawMenu() {
       g.fillStyle = 'rgba(11,20,55,.72)'; g.fillRect(0, 0, W, H);
@@ -496,7 +503,7 @@ export default {
         g.strokeStyle = i === 0 ? '#fff3c4' : 'rgba(255,255,255,.4)'; g.lineWidth = 2; g.stroke();
         g.font = '800 19px system-ui, sans-serif'; g.fillStyle = i === 0 ? '#3a2a00' : '#fff'; g.fillText(b.label, W / 2, b.y + b.h / 2 + 1);
       });
-      g.font = '500 12px system-ui, sans-serif'; g.fillStyle = '#9fb3e6'; g.fillText('Tastatur: Leertaste = Weiter, X = Von vorn', W / 2, 452);
+      g.font = '500 12px system-ui, sans-serif'; g.fillStyle = '#9fb3e6'; if (!ctx.input.isTouch) g.fillText('Tastatur: Leertaste = Weiter, X = Von vorn', W / 2, 452);
     }
     function draw() {
       g.save();

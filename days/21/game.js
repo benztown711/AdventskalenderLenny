@@ -1,10 +1,14 @@
 // Türchen 21: Glocken-Beat (Rhythmus-Spiel)
 // Du spielst die Melodie selbst: jeder Treffer läutet den passenden Glockenton.
-export const howto = 'Wähle ein Lied. Tippe im Takt die Spur (Touch: die vier Felder unten, Tastatur: D F J K oder Pfeiltasten), wenn ein Glöckchen die goldene Linie erreicht. So spielst du die Melodie selbst!';
+export const howto = {
+  touch: 'Wähle ein Lied. Tippe das passende der vier Felder unten, sobald ein Glöckchen die goldene Linie erreicht.',
+  keys: 'Wähle ein Lied mit Pfeil hoch/runter und Enter. Drücke D, F, J oder K (oder die Pfeiltasten), sobald ein Glöckchen die goldene Linie erreicht.',
+};
+export const starsInfo = '★ etwa 60 % Treffer · ★★ etwa 80 % · ★★★ etwa 90 % (je nach Lied)';
 
 const W = 360, H = 560, LW = 90, HIT_Y = 420, ZONE_Y = 462, ZONE_H = 90;
 const COL = ['#ef476f', '#ffd166', '#06d6a0', '#8ecae6'];
-const PERFECT = 0.07, GOOD = 0.15;       // Treffer-Fenster in Sekunden
+const PERFECT = 0.07, GOOD = 0.17;       // Treffer-Fenster in Sekunden
 const STRAY_COST = 0.5;                  // ein Fehltipper kostet eine halbe Note in der Quote
 const KEYS = { d: 0, f: 1, j: 2, k: 3, ArrowLeft: 0, ArrowDown: 1, ArrowUp: 2, ArrowRight: 3 };
 const KEYCAP = ['D', 'F', 'J', 'K'];
@@ -59,6 +63,19 @@ function parseSeq(s) {
   return { notes, total: t };
 }
 const laneOf = (song, midi) => song.cut.filter(c => midi >= c).length;
+// Sehr schnelle Wiederholungen derselben Note kommen auf wechselnde Spuren (kein Verrutschen bei kleinen Zeitfehlern)
+const FAST_REPEAT = 0.4;   // Sekunden
+export function assignLanes(song, notes) {
+  const orig = notes.map(n => laneOf(song, n.midi));
+  notes.forEach((n, i) => { n.lane = orig[i]; });
+  for (let i = 1; i < notes.length; i++) {
+    if (notes[i].lane !== notes[i - 1].lane || notes[i].t - notes[i - 1].t >= FAST_REPEAT) continue;
+    const l = notes[i].lane, nextL = i + 1 < notes.length ? orig[i + 1] : -1;
+    const opts = [l + 1, l - 1].filter(x => x >= 0 && x <= 3);
+    notes[i].lane = opts.find(x => x !== nextL) ?? opts[0];
+  }
+  return notes;
+}
 const multOf = c => (c >= 32 ? 4 : c >= 16 ? 3 : c >= 8 ? 2 : 1);
 
 // ---------- Zeichenhilfen ----------
@@ -127,7 +144,7 @@ export default {
       A.unlock();
       sel = i; ctx.save('last', i);
       const song = prepared[i], b = 60 / song.bpm;
-      const notes = song.notes.map(n => ({ t: n.beat * b, midi: n.midi, len: n.len * b, lane: laneOf(song, n.midi), st: 0, y: 0 }));
+      const notes = assignLanes(song, song.notes.map(n => ({ t: n.beat * b, midi: n.midi, len: n.len * b, lane: 0, st: 0, y: 0 })));
       const events = [];
       const clickT = k => (song.pickup - 4 + k) * b;
       for (let k = 0; k < 4; k++) events.push({ t: clickT(k), fn: d => A.tone(k === 0 ? 1500 : 1000, 0.06, 'square', 0.13, null, d) });
@@ -209,7 +226,8 @@ export default {
       e.preventDefault(); A.unlock();
       const p = pos(e);
       if (phase === 'menu') {
-        const i = prepared.findIndex((_, k) => p.x > 28 && p.x < 332 && p.y > 128 + k * 125 && p.y < 128 + k * 125 + 112);
+        // ganze Fläche unter dem Titel zählt: nächstgelegene Karte, sonst das vorgewählte Lied
+        const i = p.y > 110 ? Math.max(0, Math.min(prepared.length - 1, Math.floor((p.y - 128 + 6) / 125))) : -1;
         if (i >= 0) { A.sfx('pop'); startSong(i); }
         return;
       }
@@ -303,9 +321,9 @@ export default {
         txt(`${s.label} · ${s.bpm} Schläge/min`, 96, y + 62, 13, '#cfe3f5', 'left', '500');
         for (let k = 0; k < 3; k++) star(g, 108 + k * 24, y + 90, 9, k < (bs[s.id] || 0) ? '#ffd166' : 'rgba(255,255,255,.2)');
         for (let k = 0; k < 3; k++) { g.fillStyle = k < s.level ? COL[i] : 'rgba(255,255,255,.18)'; g.beginPath(); g.arc(270 + k * 18, y + 90, 5, 0, 6.3); g.fill(); }
-        if (on) txt(ctx.input.isTouch ? 'Tippen!' : 'Enter', 296, y + 36, 13, '#ffd166', 'center');
+        if (on) txt(ctx.input.isTouch ? 'Tippen!' : 'Enter', 296, y + 36, 14, '#ffd166', 'center');
       });
-      txt(ctx.input.isTouch ? 'Tippe auf ein Lied' : 'Tippen/Klicken oder Pfeil hoch/runter + Enter', W / 2, 536, 12, '#8ecae6', 'center', '500');
+      txt(ctx.input.isTouch ? 'Tippe auf ein Lied' : 'Pfeil hoch/runter wählt, Enter startet', W / 2, 536, 14, '#8ecae6', 'center', '500');
     }
     function drawPlay(dt) {
       const T = S.clock, speed = (HIT_Y + 40) / S.song.lead;
@@ -368,7 +386,8 @@ export default {
         const frac = idx < 0 ? 0.5 : ((T - (S.song.pickup - 4) * S.b) / S.b) % 1;
         g.globalAlpha = idx < 0 ? 0.9 : 1 - frac * 0.55;
         txt(label, W / 2, 230, idx < 0 ? 38 : 90 * (1.15 - frac * 0.25), '#ffd166'); g.globalAlpha = 1;
-        txt('Tippe im Takt, wenn die Glöckchen die Linie erreichen', W / 2, 292, 12, '#cfe3f5', 'center', '500');
+        txt(ctx.input.isTouch ? 'Tippe das Feld unten, sobald' : 'Drücke D F J K, sobald', W / 2, 296, 14, '#cfe3f5', 'center', '600');
+        txt('ein Glöckchen die goldene Linie erreicht', W / 2, 316, 14, '#cfe3f5', 'center', '600');
       }
     }
 

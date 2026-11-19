@@ -2,9 +2,13 @@
 import { T, N, WORLD, CX, CY, EMPTY, ICE, CRATE, idx, makeMap, hitsWall, move, rayHit, inBush } from './world.js';
 import { HEROES } from './heroes.js';
 import { botUpdate, newBrain } from './ai.js';
-import { drawGame, drawSelect, VW, VH, SUPER_BTN, cardRect } from './draw.js';
+import { drawGame, drawSelect, VW, VH, SUPER_BTN, START_BTN, cardRect } from './draw.js';
 
-export const howto = 'Sei der letzte Wichtel in der Arena! Laufen mit Pfeiltasten/WASD oder Stick, werfen mit Leertaste, Klick oder Tippen auf die Arena (zielt automatisch), Super mit X oder dem Super-Knopf. Tannen verstecken dich, der Schneesturm kostet Ausdauer.';
+export const howto = {
+  touch: 'Such dir kurz einen Helden aus, lauf mit dem Stick und tippe zum Werfen (es zielt von selbst). Nutze den SUPER-Knopf und versteck dich in Tannen.',
+  keys: 'Such dir kurz einen Helden aus, lauf mit Pfeiltasten oder WASD und wirf mit der Leertaste (es zielt von selbst). X ist der Super, Tannen verstecken dich.',
+};
+export const starsInfo = '★ Platz 3 · ★★ Platz 2 · ★★★ Sieg';
 // Nur für automatische Tests: Zugriff auf die laufende Welt.
 export const debug = {};
 
@@ -26,7 +30,7 @@ export default {
     const A = ctx.audio;
     let stufe = clamp(Number(ctx.load('stufe', 1)) || 1, 1, 3);
     let pokale = Number(ctx.load('pokale', 0)) || 0;
-    const S = { phase: 'select', t: 0, sel: clamp(Number(ctx.load('held', 0)) || 0, 0, 2), flakes: [] };
+    const S = { phase: 'select', t: 0, sel: clamp(Number(ctx.load('held', 1)), 0, 2) || 0, flakes: [] };
     for (let i = 0; i < 50; i++) S.flakes.push({ x: Math.random() * VW, y: Math.random() * VH, s: rand(1, 2.6), v: rand(15, 45) });
     let W = null, P = null;
     ctx.input.pad({ stick: true, a: 'Wurf', b: 'Super' });
@@ -127,11 +131,14 @@ export default {
       } else if (!e.isPlayer) feed(`${e.name} purzelt raus!`);
       const others = W.ents.filter(o => o.alive && !o.isPlayer).length;
       if (e.isPlayer) {
-        feed('Du purzelst als Schneekugel raus!', '#ff8fa3');
         ctx.fx.shake(500); A.sfx('bad');
         endRound(others + 1);
       } else if (others === 0 && P.alive) endRound(1);
-      else if (!W.over && P.alive && others <= 2) msg(others === 1 ? 'Nur noch einer!' : `Noch ${others + 1} Wichtel!`, '#8ecae6', 24, 1.2);
+      else if (!W.over && P.alive && others <= 2) {
+        const st = others === 1 ? 2 : 1;
+        ctx.progress({ stars: st, score: pokale, text: st === 2 ? 'Nur noch ein Gegner: mindestens Platz 2.' : 'Noch drei Wichtel: mindestens Platz 3.' });
+        msg(others === 1 ? 'Nur noch einer!' : `Noch ${others + 1} Wichtel!`, '#8ecae6', 24, 1.2);
+      }
       hud();
     }
     function dropCrystal(x, y) {
@@ -274,13 +281,14 @@ export default {
         else text = `Du bist Arena-Champion der Stufe 3! ${plus}`;
         msg('Sieg!', '#ffd166', 54, 2.2);
       } else {
-        msg(`Platz ${place}`, place <= 3 ? '#ffd166' : '#8ecae6', 46, 2.2);
-        if (place === 2) text = `Platz 2! ${plus} Nur ein Wichtel fehlte noch zum Sieg und zu 3 Sternen.`;
-        else if (place === 3) text = `Platz 3! ${plus} Platz 2 bringt 2 Sterne, ein Sieg 3 Sterne.`;
-        else text = `Platz ${place}. ${plus} Schaffst du es unter die letzten 3, gibt es den ersten Stern. Tipp: In Tannen verstecken und Kristalle sammeln!`;
+        msg(`Platz ${place}`, place <= 3 ? '#ffd166' : '#8ecae6', 46, 2.0);
+        if (!P.alive) msg('Du purzelst raus!', '#ff8fa3', 28, 2.0);
+        if (place === 2) text = `Platz 2! ${plus} Nur ein Wichtel fehlte noch zum Sieg und zu 3 Sternen. Tipp: Warte in den Tannen auf den letzten Gegner und wirf zuerst.`;
+        else if (place === 3) text = `Platz 3! ${plus} Platz 2 bringt 2 Sterne, ein Sieg 3 Sterne. Tipp: Sammle Kristalle, sie machen dich stärker, und bleib im Kreis.`;
+        else text = `Platz ${place}. ${plus} Unter den letzten 3 gibt es den ersten Stern. Tipp: Versteck dich in den Tannen, sammle Kristalle und bleib im Kreis.`;
       }
       hud();
-      ctx.timeout(() => ctx.finish({ won: place === 1, stars, score: pokale, text }), 2300);
+      ctx.timeout(() => ctx.finish({ won: place === 1, stars, score: pokale, text }), 2000);
     }
 
     // ---------- Eingabe ----------
@@ -295,7 +303,7 @@ export default {
       if (S.phase === 'select') {
         if (n === 'up' || n === 'left') { S.sel = (S.sel + 2) % 3; A.sfx('click'); }
         if (n === 'down' || n === 'right') { S.sel = (S.sel + 1) % 3; A.sfx('click'); }
-        if (n === 'a' || n === 'b') choose(S.sel);
+        if (n === 'a') choose(S.sel);
         return;
       }
       if (n === 'a') { playerThrow(); P.holdT = 0; }
@@ -304,7 +312,12 @@ export default {
     ctx.on(canvas, 'pointerdown', e => {
       const p = pos(e);
       if (S.phase === 'select') {
-        for (let i = 0; i < 3; i++) { const r = cardRect(i); if (p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h) { choose(i); return; } }
+        const B = START_BTN;
+        if (p.x > B.x && p.x < B.x + B.w && p.y > B.y - 6 && p.y < B.y + B.h + 6) { choose(S.sel); return; }
+        for (let i = 0; i < 3; i++) {
+          const r = cardRect(i);
+          if (p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h) { if (i === S.sel) choose(i); else { S.sel = i; A.sfx('click'); } return; }
+        }
         return;
       }
       if (S.phase !== 'play' || !P.alive) return;
@@ -502,7 +515,7 @@ export default {
     ctx.loop(dt => {
       S.t += dt;
       for (const f of S.flakes) { f.y += f.v * dt; f.x += Math.sin(S.t + f.v) * 8 * dt; if (f.y > VH) { f.y = -4; f.x = Math.random() * VW; } }
-      if (S.phase === 'select') { drawSelect(g, S, stufe, pokale); return; }
+      if (S.phase === 'select') { drawSelect(g, S, stufe, pokale, ctx.input.isTouch); return; }
       if (S.phase === 'count') {
         const before = Math.ceil(W.count / 0.5);
         W.count -= dt;

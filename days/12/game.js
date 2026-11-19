@@ -1,7 +1,11 @@
 // Türchen 12: Pixel-Geheimnis (Zahlen-Bilderrätsel / Nonogramm)
 import { PICS, PAL, TUT, maskOf, cluesOf } from './bilder.js';
 
-export const howto = 'Die Zahlen sagen, wie viele Kästchen am Stück gefüllt sind. Tippe oder ziehe zum Füllen, schalte auf Kreuz für sichere Leer-Felder. Tastatur: Pfeile, Leertaste = füllen, X = Kreuz.';
+export const howto = {
+  touch: 'Die Zahlen am Rand sagen, wie viele Kästchen in der Reihe am Stück gefüllt werden. Tippe oder ziehe zum Füllen, "Kreuz" markiert sichere Leer-Felder.',
+  keys: 'Die Zahlen am Rand sagen, wie viele Kästchen in der Reihe am Stück gefüllt werden. Pfeiltasten bewegen, Leertaste füllt, X macht ein Kreuz.',
+};
+export const starsInfo = '★ 2 Bilder · ★★ 4 Bilder · ★★★ alle 6 Bilder';
 
 const W = 360, H = 560, MAXH = 5;
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
@@ -67,7 +71,7 @@ export default {
     function makeBoard(art, o = {}) {
       const m = maskOf(art), n = art.length, cl = cluesOf(art);
       const bd = { art, n, sol: m.flat(), rows: cl.rows, cols: cl.cols, st: new Array(n * n).fill(0), bad: new Array(n * n).fill(0), t0: new Array(n * n).fill(-9), flash: new Array(n * n).fill(-9),
-        hearts: MAXH, lost: 0, rowDone: new Array(n).fill(false), colDone: new Array(n).fill(false), idx: o.idx, tut: !!o.tut, shakeT: -9, lastDone: -9 };
+        hearts: MAXH, lost: 0, rowDone: new Array(n).fill(false), colDone: new Array(n).fill(false), idx: o.idx, tut: !!o.tut, helped: false, shakeT: -9, lastDone: -9 };
       const fs = n <= 5 ? 17 : n <= 8 ? 15 : 13;
       g.font = `700 ${fs}px ${FONT}`;
       const numW = s => g.measureText(String(s)).width + 5;
@@ -107,8 +111,9 @@ export default {
       b.hearts--; b.lost++; b.shakeT = time; ctx.fx.shake();
       if (b.hearts <= 0) {
         stroke = null; keyStroke = null;
-        ctx.toast('Alle Herzen weg. Nochmal von vorn!', 2200);
-        ctx.timeout(() => { if (b && b.hearts <= 0) { b.st.fill(0); b.bad.fill(0); b.rowDone.fill(false); b.colDone.fill(false); b.hearts = MAXH; for (let y = 0; y < b.n; y++) updateLine('r', y, true); for (let x = 0; x < b.n; x++) updateLine('c', x, true); } }, 900);
+        b.helped = true;
+        ctx.toast('Neue Herzen, weiter geht es!', 2200);
+        ctx.timeout(() => { if (b && screen === 'play' && b.hearts <= 0) b.hearts = MAXH; }, 900);
       }
     }
     // setzt ein Feld; gibt false zurück, wenn ein Fehler passiert ist (Strich endet)
@@ -141,24 +146,28 @@ export default {
       solving = true; stroke = null; keyStroke = null;
       for (let i = 0; i < b.st.length; i++) if (b.st[i] === 0) b.st[i] = 2;
       if (b.tut) { ctx.audio.sfx('level'); ctx.fx.confetti(); ctx.save('tut', true); tutSeen = true; return; }
-      const hearts = b.hearts, idx = b.idx;
+      const helped = b.helped, hearts = helped ? 0 : b.hearts, idx = b.idx;
       const old = gal[idx]; gal[idx] = Math.max(old === undefined ? 0 : old, hearts); ctx.save('gal', gal); hud();
+      const sm = summary(); if (sm.stars > 0) ctx.progress(sm);
       ctx.audio.sfx('level');
-      ctx.timeout(() => { rev = { idx, t: 0, hearts, all: solvedCount() >= 6 }; screen = 'reveal'; solving = false; ctx.fx.confetti(); ctx.audio.sfx('win'); }, 900);
+      ctx.timeout(() => { rev = { idx, t: 0, hearts, helped, all: solvedCount() >= 6 }; screen = 'reveal'; solving = false; ctx.fx.confetti(); ctx.audio.sfx('win'); }, 900);
     }
 
     /* ---------- Bildschirme wechseln ---------- */
     function openPic(i) { b = makeBoard(PICS[i].art, { idx: i }); screen = 'play'; solving = false; stroke = null; focus = null; curShow = false; cur = { x: 0, y: 0 }; ctx.audio.sfx('swoosh'); }
     function openTut() { b = makeBoard(TUT.art, { tut: true }); screen = 'tut'; solving = false; stroke = null; focus = null; curShow = false; cur = { x: 0, y: 0 }; tool = 'fill'; ctx.audio.sfx('swoosh'); }
     function toMenu() { screen = 'menu'; b = null; stroke = null; solving = false; ctx.audio.sfx('swoosh'); }
-    function done() {
-      if (finished) return; finished = true;
+    function summary() {
       const n = solvedCount(), stars = starsFor(n);
-      const perfect = Object.values(gal).reduce((a, v) => a + 100 + v * 20, 0);
+      const score = Object.values(gal).reduce((a, v) => a + 100 + v * 20, 0);
       const nextT = THRESH.find(t => t > n);
       const text = n >= 6 ? 'Alle 6 Geheimnisse gelüftet. Du bist ein echter Pixel-Detektiv!'
         : `Du hast ${n} von 6 Bildern enthüllt. Noch ${nextT - n} Bild${nextT - n > 1 ? 'er' : ''} für den ${stars + 1}. Stern${n === 1 ? ' (2 Bilder = 1 Stern, 4 = 2, 6 = 3)' : ''}!`;
-      ctx.finish({ won: stars > 0, stars, score: perfect, text });
+      return { won: stars > 0, stars, score, text };
+    }
+    function done() {
+      if (finished) return; finished = true;
+      ctx.finish(summary());
     }
 
     /* ---------- Eingabe ---------- */
@@ -330,7 +339,7 @@ export default {
       const ok = solvedCount() > 0;
       const stars = starsFor(solvedCount());
       button(190, by, 150, 46, ok ? 'Fertig für heute' : 'Löse ein Bild', ok ? done : () => ctx.toast('Löse zuerst ein Bild!'), { fill: ok ? C.green : '#1a2557', color: ok ? '#052b22' : '#7482b8', stroke: ok ? '#b9ffe9' : '#2c3a80', glow: ok ? C.green : null, size: 15 });
-      txt(`Sterne: 2 Bilder = ★   4 = ★★   6 = ★★★   (jetzt ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)})`, W / 2, by + 66, 11.5, '#9fb0e6', 'center', 600);
+      txt(`Sterne: 2 Bilder ★ · 4 ★★ · 6 ★★★ (jetzt ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)})`, W / 2, by + 66, 12, '#9fb0e6', 'center', 600);
     }
     function drawPlay() {
       const tut = b.tut;
@@ -355,7 +364,7 @@ export default {
         if (solving) button(80, 470, 200, 50, "Los geht's!", finishTut, { fill: C.green, color: '#052b22', glow: C.green, size: 18 });
         else drawToggle(490);
       } else {
-        txt('Falsch gefüllt? Rot, Herz weg, wird zum Kreuz.', W / 2, 468, 12, '#7f8fc9', 'center', 600);
+        txt('Falsch gefüllt? Rot, ein Herz weg, wird zum Kreuz.', W / 2, 468, 13, '#9fb0e6', 'center', 600);
         drawToggle(490);
       }
     }
@@ -368,9 +377,9 @@ export default {
       const size = 290, x = (W - size) / 2, y = 94;
       g.save(); g.shadowColor = C.gold; g.shadowBlur = 24; rr(x - 10, y - 10, size + 20, size + 20, 22); g.fillStyle = C.paper; g.fill(); g.restore();
       miniPic(p.art, x, y, size, { t: t - 0.15, delay: (i, j) => (i + j) * 0.035 + (i * 7 + j * 3) % 5 * 0.01 });
-      if (t > 1.2) txt(rev.hearts === MAXH ? 'Fehlerfrei!' : `Noch ${rev.hearts} von 5 Herzen übrig`, W / 2, y + size + 30, 16, rev.hearts === MAXH ? C.green : '#b8c4ee');
+      if (t > 1.2) txt(rev.helped ? 'Mit Hilfe gelöst (weniger Bonuspunkte)' : rev.hearts === MAXH ? 'Fehlerfrei!' : `Noch ${rev.hearts} von 5 Herzen übrig`, W / 2, y + size + 30, 16, rev.helped ? C.gold : rev.hearts === MAXH ? C.green : '#b8c4ee');
       const nx = nextUnsolved(rev.idx);
-      if (rev.all) button(40, 470, 280, 54, 'Fertig, Sterne abholen!', revNext, { fill: C.green, color: '#052b22', glow: C.green, size: 19 });
+      if (rev.all) button(40, 470, 280, 54, 'Fertig für heute', revNext, { fill: C.green, color: '#052b22', glow: C.green, size: 19 });
       else {
         button(18, 480, 190, 50, nx >= 0 ? 'Nächstes Bild ▶' : 'Zur Galerie', revNext, { fill: C.gold, color: '#2a2000', stroke: '#fff3c4', glow: C.gold, size: 18 });
         button(222, 480, 120, 50, 'Galerie', toMenu, { size: 16 });

@@ -17,3 +17,12 @@
 - Einheitliche Leiste: zurück, Anzeige (Punkte, Level ...), Pause, Ton an/aus.
 - Ergebnis-Karte mit Sternen, Punkten, Rekord, "Nochmal" und "Zum Kalender".
 - Pause automatisch, wenn der Tab in den Hintergrund geht.
+
+### Anforderung: Nachbesserungen aus dem Nutzertest
+- Das heutige Türchen trägt ein goldenes "HEUTE"-Band, verpasste Türchen "NEU!". Ein Türchen gilt erst als gespielt, wenn ein Ergebnis oder Zwischenstand vorliegt.
+- Die Meldung zu einem gesperrten Türchen bleibt rund 3 Sekunden sichtbar und ist vom Countdown getrennt.
+- Verdiente Sterne gehen nie verloren: Spiele melden Zwischenstände, der Zurück-Pfeil zeigt dann die Ergebnis-Karte.
+- Alle Karten-Knöpfe sind mit Enter und Leertaste bedienbar, Esc pausiert. Sichtbarer Fokusring.
+- Die Start-Karte zeigt die Anleitung passend zum Gerät (Touch oder Tastatur) und eine Zeile "So gibt es Sterne".
+- Ab dem 24. zeigt der Kalender eine Abschluss-Zeile mit dem Sternestand. Hinweis, dass Sterne nur auf diesem Gerät gespeichert sind.
+- Bei "Bewegung reduzieren" entfallen Schnee, Wackeln und der größte Teil des Konfettis.

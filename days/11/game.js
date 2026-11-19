@@ -1,14 +1,19 @@
 // Türchen 11: Knoten-Chaos – entwirre die Lichterkette, bis sich kein Kabel mehr kreuzt.
 import { FIELD, LEVELS, generate, findCrossings, countCrossings } from './logik.js';
 
-export const howto = 'Zieh die Glühbirnen mit Finger oder Maus herum, bis sich keine Kabel mehr kreuzen. Tastatur: Tab oder A wählt eine Birne, Pfeiltasten schieben sie, H gibt einen Tipp.';
+export const howto = {
+  touch: 'Zieh die Glühbirnen mit dem Finger herum, bis sich kein Kabel mehr mit einem anderen kreuzt. Rote Kabel kreuzen sich noch, grün ist gut.',
+  keys: 'Zieh die Glühbirnen mit der Maus herum, bis sich kein Kabel mehr kreuzt. Oder: Tab oder A wählt eine Birne, Pfeiltasten schieben sie, H gibt einen Tipp.',
+};
+export const starsInfo = '★ 3 Level entwirrt · ★★ 5 Level · ★★★ alle 8 Level';
 
 const W = 360, H = 560, R = 18, HIT = 32, MIN_D = 38, STEP = 10;
 const COLORS = ['#ef476f', '#ffd166', '#06d6a0', '#8ecae6', '#c77dff', '#ff9f68'];
 const SCALE = [60, 62, 64, 67, 69, 72, 74, 76, 79, 81, 84, 86, 88, 91, 93, 96]; // Pentatonik
 const midi = n => 440 * Math.pow(2, (n - 69) / 12);
 const HINTS_PER_LEVEL = 2;
-const BTN_HINT = { x: 16, y: 496, w: 160, h: 44 }, BTN_END = { x: 184, y: 496, w: 160, h: 44 };
+const BTN_HINT = { x: 16, y: 496, w: 130, h: 44 }, BTN_END = { x: 154, y: 496, w: 190, h: 44 };
+const BTN_YES = { x: 24, y: 300, w: 150, h: 54 }, BTN_NO = { x: 186, y: 300, w: 150, h: 54 };
 const inBox = (b, p) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
 const clampX = x => Math.max(FIELD.x0, Math.min(FIELD.x1, x));
 const clampY = y => Math.max(FIELD.y0, Math.min(FIELD.y1, y));
@@ -19,9 +24,9 @@ export default {
     canvas.style.touchAction = 'none';
     let level = 1, done = 0, moves = 0, time = 0, clock = 0;
     let pts = [], edges = [], sol = [], springs = [], lit = [], crossInfo = { count: 0, bad: new Set() };
-    let state = 'play'; // play | win | end
-    let drag = -1, grabDx = 0, grabDy = 0, dragMoved = false, sel = -1;
-    let hintsLeft = HINTS_PER_LEVEL, endArmed = 0, pressedBtn = null, pendingCheck = false;
+    let state = 'play'; // play | win | end | ask
+    let askSel = 1, drag = -1, grabDx = 0, grabDy = 0, dragMoved = false, sel = -1;
+    let hintsLeft = HINTS_PER_LEVEL, pressedBtn = null, pendingCheck = false;
     let sparks = [], flakes = [], pulse = 0, shown = -1, levelTime = 0;
     const reached = ctx.load('level', 0) || 0;
     for (let i = 0; i < 40; i++) flakes.push({ x: Math.random() * W, y: Math.random() * H, r: 0.8 + Math.random() * 1.6, v: 6 + Math.random() * 14, ph: Math.random() * 6 });
@@ -43,7 +48,7 @@ export default {
     }
 
     function startLevel(n) {
-      level = n; state = 'play'; drag = -1; sel = -1; hintsLeft = HINTS_PER_LEVEL; levelTime = 0; endArmed = 0;
+      level = n; state = 'play'; drag = -1; sel = -1; hintsLeft = HINTS_PER_LEVEL; levelTime = 0;
       const p = generate(n);
       edges = p.edges; sol = p.sol;
       pts = p.start.map(q => ({ x: q.x, y: q.y, tx: q.x, ty: q.y, size: 1 }));
@@ -53,7 +58,7 @@ export default {
       crossInfo = findCrossings(pts, edges); shown = crossInfo.count;
       hudKey = ''; hud();
       ctx.audio.sfx('swoosh');
-      ctx.toast(n === 1 ? 'Entwirre die Kabel! 💡' : `Level ${n}: ${pts.length} Birnen`, 1600);
+      ctx.toast(n === 1 ? 'Entwirre die Kabel!' : `Level ${n}: ${pts.length} Birnen`, 1600);
     }
 
     // Feder-Punkt jedes Kabels (folgt der Kabelmitte mit Verzögerung -> leichtes Wackeln)
@@ -94,6 +99,7 @@ export default {
     function solved() {
       state = 'win'; drag = -1; sel = -1;
       done = level; ctx.save('level', Math.max(reached, done, ctx.load('level', 0) || 0));
+      ctx.progress({ stars: starsFor(done), score: scoreFor(), text: needText() });
       ctx.audio.sfx('level'); ctx.fx.shake(220);
       const n = pts.length, gap = 0.11;
       pts.forEach((p, i) => ctx.timeout(() => {
@@ -108,13 +114,14 @@ export default {
       } else ctx.timeout(() => finish(true), total + 300);
     }
 
+    const starsFor = d => d >= 8 ? 3 : d >= 5 ? 2 : d >= 3 ? 1 : 0;
+    const scoreFor = () => done ? done * 100 + Math.max(0, 300 - secs()) : 0;
+    const needText = () => done >= 8 ? '' : done >= 5 ? 'Für den dritten Stern entwirre alle 8 Level.' : done >= 3 ? 'Für den zweiten Stern entwirre 5 Level.' : 'Für den ersten Stern entwirre 3 Level.';
     function finish(allDone) {
       state = 'end';
-      const stars = done >= 8 ? 3 : done >= 5 ? 2 : done >= 3 ? 1 : 0;
-      const need = done >= 8 ? '' : done >= 5 ? ' Für den dritten Stern musst du alle 8 Level entwirren.' : done >= 3 ? ' Für den zweiten Stern brauchst du 5 entwirrte Level.' : ' Für den ersten Stern entwirre 3 Level.';
       ctx.finish({
-        won: allDone, stars, score: done ? done * 100 + Math.max(0, 300 - secs()) : 0,
-        text: (allDone ? `Alle 8 Lichterketten leuchten! Zeit ${fmt(secs())}, ${moves} Züge.` : `Du hast ${done} von 8 Lichterketten entwirrt.`) + need,
+        won: allDone, stars: starsFor(done), score: scoreFor(),
+        text: (allDone ? `Alle 8 Lichterketten leuchten! Zeit ${fmt(secs())}, ${moves} Züge.` : `Du hast ${done} von 8 Lichterketten entwirrt.`) + ' ' + needText(),
       });
     }
 
@@ -137,20 +144,22 @@ export default {
       hudKey = ''; hud();
     }
 
+    // "Fertig für heute": mit mindestens einem Stern direkt abrechnen, sonst erst nachfragen
     function tryEnd() {
       if (state !== 'play') return;
-      if (!endArmed) {
-        endArmed = 2.6; ctx.audio.sfx('click');
-        ctx.toast(done ? `Nochmal tippen zum Beenden (${done} Level geschafft)` : 'Nochmal tippen zum Beenden', 1800);
-        return;
-      }
-      finish(false);
+      ctx.audio.sfx('click');
+      if (starsFor(done) > 0) { state = 'end'; ctx.timeout(() => finish(false), 220); } // kurz warten: sonst trifft der Tipp-Klick die Ergebnis-Karte
+      else { state = 'ask'; drag = -1; sel = -1; askSel = 1; }
     }
 
     // ---- Zeiger ----
     ctx.on(canvas, 'pointerdown', e => {
       e.preventDefault(); ctx.audio.unlock?.();
       const p = pos(e);
+      if (state === 'ask') {
+        if (inBox(BTN_YES, p)) { state = 'end'; ctx.timeout(() => finish(false), 220); } else if (inBox(BTN_NO, p)) { state = 'play'; ctx.audio.sfx('click'); }
+        return;
+      }
       if (state !== 'play') return;
       if (inBox(BTN_HINT, p)) { pressedBtn = 'hint'; return; }
       if (inBox(BTN_END, p)) { pressedBtn = 'end'; return; }
@@ -191,8 +200,14 @@ export default {
 
     // ---- Tastatur ----
     ctx.on(window, 'keydown', e => {
-      if (state !== 'play' || ctx.paused) return;
+      if (ctx.paused) return;
       const k = e.key;
+      if (state === 'ask') {
+        if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); askSel = k === 'ArrowLeft' ? 0 : 1; ctx.audio.sfx('tick'); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); if (askSel === 0) { state = 'end'; ctx.timeout(() => finish(false), 220); } else { state = 'play'; ctx.audio.sfx('click'); } }
+        return;
+      }
+      if (state !== 'play') return;
       if (k === 'Tab' || k === 'a' || k === 'A') {
         e.preventDefault();
         if (e.repeat) return;
@@ -249,7 +264,7 @@ export default {
       if (ok) { g.shadowColor = '#ffd166'; g.shadowBlur = 14; }
       g.fillText(`Kreuzungen: ${c}`, 0, 0); g.restore(); g.shadowBlur = 0;
       if (level === 1 && levelTime < 9 && state === 'play') {
-        g.globalAlpha = Math.min(1, (9 - levelTime) / 2); g.fillStyle = '#8ecae6'; g.font = '14px system-ui, sans-serif'; g.textAlign = 'center';
+        g.globalAlpha = Math.min(1, (9 - levelTime) / 2); g.fillStyle = '#8ecae6'; g.font = '700 14px system-ui, sans-serif'; g.textAlign = 'center';
         g.fillText('Rote Kabel kreuzen sich.', W / 2, 80); g.fillText('Zieh die Birnen, bis alles grün ist!', W / 2, 98); g.globalAlpha = 1;
       }
 
@@ -288,16 +303,25 @@ export default {
       g.globalAlpha = 1;
 
       // Knöpfe
-      button(BTN_HINT, '💡 Tipp', `noch ${hintsLeft}`, pressedBtn === 'hint');
-      button(BTN_END, endArmed ? 'Wirklich beenden?' : 'Beenden', done ? `${done} Level geschafft` : null, pressedBtn === 'end' || endArmed > 0);
-      g.fillStyle = 'rgba(255,255,255,.45)'; g.font = '11px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(reached ? `Bisher erreicht: Level ${reached} · Tab/A wählen, Pfeile schieben` : 'Tab/A wählen, Pfeiltasten schieben, H = Tipp', W / 2, 551);
+      button(BTN_HINT, 'Tipp', `noch ${hintsLeft}`, pressedBtn === 'hint');
+      button(BTN_END, 'Fertig für heute', done ? `${done} Level geschafft` : null, pressedBtn === 'end');
+      if (!ctx.input.isTouch) { g.fillStyle = 'rgba(255,255,255,.6)'; g.font = '12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Tab/A wählen · Pfeiltasten schieben · H = Tipp', W / 2, 551); }
+      else if (reached) { g.fillStyle = 'rgba(255,255,255,.6)'; g.font = '12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`Bisher erreicht: Level ${reached}`, W / 2, 551); }
+      if (state === 'ask') {
+        g.fillStyle = 'rgba(6,13,38,.86)'; g.fillRect(0, 0, W, H);
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffd166'; g.font = '800 26px system-ui, sans-serif'; g.fillText('Wirklich aufhören?', W / 2, 232);
+        g.fillStyle = '#fff'; g.font = '600 15px system-ui, sans-serif'; g.fillText('Du hast noch keinen Stern.', W / 2, 266);
+        [[BTN_YES, 'Ja, fertig', 0], [BTN_NO, 'Weiter spielen', 1]].forEach(([b, t, k]) => {
+          roundRect(b.x, b.y, b.w, b.h, 16); g.fillStyle = k ? 'rgba(6,214,160,.25)' : 'rgba(255,255,255,.08)'; g.fill();
+          const on = !ctx.input.isTouch && askSel === k; g.strokeStyle = on ? '#ffd166' : k ? '#06d6a0' : 'rgba(255,255,255,.4)'; g.lineWidth = on ? 4 : 2.5; g.stroke();
+          g.fillStyle = '#fff'; g.font = '700 17px system-ui, sans-serif'; g.fillText(t, b.x + b.w / 2, b.y + b.h / 2);
+        });
+      }
     }
 
     startLevel(1);
     ctx.loop((dt, t) => {
       if (state === 'play') { time += dt; levelTime += dt; }
-      if (endArmed > 0) endArmed = Math.max(0, endArmed - dt);
       pulse = Math.max(0, pulse - dt * 4);
       // Birnen gleiten zu ihrem Ziel (außer die gezogene)
       const k = 1 - Math.exp(-dt * 20);

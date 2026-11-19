@@ -1,5 +1,9 @@
 // Türchen 3: Eisblock-Stapler (Fallblock-Puzzle mit Eis, Geschenk-Stein und Feuer-Stein)
-export const howto = 'Stapel die Eisblöcke zu vollen Reihen, dann zerspringen sie! Tastatur: ◀ ▶ bewegen, ▲ drehen, ▼ schneller, Leertaste fallen lassen, C halten. Touch: Tippen = drehen, ziehen = bewegen, nach unten wischen = fallen lassen. 🎁 räumt seine Reihe ab, 🔥 schmilzt 3×3.';
+export const howto = {
+  touch: 'Ziehe den Stein nach links oder rechts, tippe zum Drehen, wische nach unten zum Fallenlassen. Volle Reihen zerspringen!',
+  keys: 'Pfeil links/rechts bewegt, hoch dreht, Leertaste lässt fallen, C hält einen Stein zurück. Volle Reihen zerspringen!',
+};
+export const starsInfo = '★ ab 8 Reihen · ★★ ab 20 · ★★★ 40 Reihen';
 
 const COLS = 10, ROWS = 18, C = 26, W = 360, H = 500;
 const BX = 10, BY = 16, BW = COLS * C, BH = ROWS * C;
@@ -196,7 +200,13 @@ export default {
       }
       for (let i = 0; i < 3; i++) parts.push({ k: 'smoke', x: x + rnd(-6, 6), y, vx: rnd(-14, 14), vy: rnd(-60, -30), g: 0, s: rnd(6, 10), life: rnd(0.6, 1.0), max: 1, col: '#cfd8ff' });
     }
-    const floater = (text, x, y, col = '#ffd166', size = 22) => floaters.push({ text, x, y, life: 1.3, max: 1.3, col, size });
+    const floater = (text, x, y, col = '#ffd166', size = 22) => {
+      // Schwebetexte entzerren: nicht auf einen noch sichtbaren Text setzen
+      for (let k = 0; k < 8 && floaters.some(f => Math.abs(f.y - y) < (f.size + size) * 0.55 && Math.abs(f.x - x) < 130); k++) y += (size + 6);
+      floaters.push({ text, x, y: Math.min(y, BY + BH - 6), life: 1.3, max: 1.3, col, size });
+    };
+    let progStars = 0, hintOn = true;
+    const dismissHint = () => { hintOn = false; };
     const bump = (a, t = 0.25) => { shakeA = Math.max(shakeA, a); shakeT = Math.max(shakeT, t); };
     function chime(n, cb) {
       const base = 72 + Math.min(8, cb - 1) * 2, sc = [0, 4, 7, 12, 16, 19, 24];
@@ -252,6 +262,7 @@ export default {
         const base = [0, 100, 300, 500, 800][Math.min(nclear, 4)] + Math.max(0, nclear - 4) * 300;
         let pts = base * level; if (combo >= 2) pts += 50 * (combo - 1) * level;
         score += pts; lines += nclear;
+        { const r = result(); if (r.stars > progStars) { progStars = r.stars; ctx.progress({ stars: r.stars, score, text: r.text }); } }
         const names = ['', 'Klirr!', 'Doppel!', 'Dreifach!', 'EIS-BRUCH!!'];
         const cyy = BY + [...rows][0] * C;
         floater(names[Math.min(nclear, 4)] + (nclear > 4 ? '!' : ''), BX + BW / 2, Math.max(70, cyy - 14), '#ffffff', nclear >= 4 ? 30 : 24);
@@ -297,6 +308,7 @@ export default {
     // ---------- Eingabe ----------
     ctx.input.pad({ dpad: true, a: 'Fallen', b: 'Drehen' });
     ctx.input.onPress(n => {
+      dismissHint();
       if (n === 'left' || n === 'right') { dasDir = n === 'left' ? -1 : 1; dasT = 0; dasRep = 0; move(dasDir); }
       else if (n === 'up' || n === 'b') rotate();
       else if (n === 'a') hardDrop();
@@ -311,7 +323,7 @@ export default {
     const HOLD_BOX = { x: PX, y: 172, w: PW, h: 66 };
     let gest = null;
     ctx.on(canvas, 'pointerdown', e => {
-      if (ctx.paused) return; e.preventDefault();
+      if (ctx.paused) return; e.preventDefault(); dismissHint();
       try { canvas.setPointerCapture(e.pointerId); } catch {}
       const p = pos(e);
       if (p.x >= HOLD_BOX.x && p.x <= HOLD_BOX.x + HOLD_BOX.w && p.y >= HOLD_BOX.y - 14 && p.y <= HOLD_BOX.y + HOLD_BOX.h) { holdSwap(); gest = null; return; }
@@ -368,7 +380,7 @@ export default {
     function box(x, y, w, h, label) {
       g.fillStyle = 'rgba(142,202,230,.10)'; rr(g, x, y, w, h, 10); g.fill();
       g.strokeStyle = 'rgba(142,202,230,.4)'; g.lineWidth = 1; g.stroke();
-      g.fillStyle = '#8ecae6'; g.font = 'bold 10px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+      g.fillStyle = '#8ecae6'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
       g.fillText(label, x + w / 2, y - 4);
     }
     function draw() {
@@ -446,17 +458,24 @@ export default {
       // Seitenleiste
       box(PX, 30, PW, 66, 'NÄCHSTER'); if (queue[0]) drawMini(queue[0], PX, 30, PW, 66, 14);
       box(PX, 116, PW, 36, 'DANACH'); if (queue[1]) drawMini(queue[1], PX, 116, PW, 36, 8, 0.85);
-      box(HOLD_BOX.x, HOLD_BOX.y, HOLD_BOX.w, HOLD_BOX.h, 'HALTEN (C)'); if (holdP) drawMini(holdP, HOLD_BOX.x, HOLD_BOX.y, HOLD_BOX.w, HOLD_BOX.h, 14, holdUsed ? 0.4 : 1);
-      else { g.fillStyle = 'rgba(142,202,230,.5)'; g.font = '10px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('tippen', PX + PW / 2, HOLD_BOX.y + 38); }
-      g.fillStyle = '#8ecae6'; g.font = 'bold 10px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('LEVEL', PX + PW / 2, 262);
+      box(HOLD_BOX.x, HOLD_BOX.y, HOLD_BOX.w, HOLD_BOX.h, ctx.input.isTouch ? 'HALTEN' : 'HALTEN (C)'); if (holdP) drawMini(holdP, HOLD_BOX.x, HOLD_BOX.y, HOLD_BOX.w, HOLD_BOX.h, 14, holdUsed ? 0.4 : 1);
+      else { g.fillStyle = 'rgba(142,202,230,.5)'; g.font = '12px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(ctx.input.isTouch ? 'tippen' : 'Taste C', PX + PW / 2, HOLD_BOX.y + 38); }
+      g.fillStyle = '#8ecae6'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('LEVEL', PX + PW / 2, 262);
       g.fillStyle = '#ffd166'; g.font = 'bold 28px system-ui, sans-serif'; g.fillText(level, PX + PW / 2, 292);
       g.fillStyle = 'rgba(142,202,230,.25)'; rr(g, PX + 6, 300, PW - 12, 7, 3.5); g.fill();
       const prog = (lines % 8) / 8; if (prog > 0) { g.fillStyle = '#06d6a0'; rr(g, PX + 6, 300, Math.max(7, (PW - 12) * prog), 7, 3.5); g.fill(); }
       if (combo >= 2) { const k = 1 + Math.sin(time * 10) * 0.06; g.save(); g.translate(PX + PW / 2, 336); g.scale(k, k); g.fillStyle = '#c77dff'; g.font = 'bold 14px system-ui, sans-serif'; g.fillText('KOMBO x' + combo, 0, 0); g.restore(); }
-      g.textAlign = 'left';
-      const leg = (fn, y, t1, t2) => { fn(g, PX, y, 20, time); g.fillStyle = '#e8f6ff'; g.font = 'bold 10px system-ui, sans-serif'; g.fillText(t1, PX + 24, y + 9); g.fillStyle = '#8ecae6'; g.font = '9px system-ui, sans-serif'; g.fillText(t2, PX + 24, y + 20); };
-      leg(drawGift, 372, 'Geschenk', 'Reihe weg'); leg(drawFire, 410, 'Feuer', 'schmilzt 3×3');
-      g.fillStyle = 'rgba(142,202,230,.6)'; g.textAlign = 'center'; g.fillText('Ziel: 40 Reihen', PX + PW / 2, 468);
+      g.textAlign = 'center';
+      const leg = (fn, y, t1, t2) => { fn(g, PX + PW / 2 - 10, y, 20, time); g.fillStyle = '#e8f6ff'; g.font = 'bold 12px system-ui, sans-serif'; g.fillText(t1, PX + PW / 2, y + 34); g.fillStyle = '#8ecae6'; g.font = '12px system-ui, sans-serif'; g.fillText(t2, PX + PW / 2, y + 48); };
+      leg(drawGift, 352, 'Geschenk', 'Reihe weg'); leg(drawFire, 408, 'Feuer', '3×3 weg');
+      g.fillStyle = 'rgba(142,202,230,.75)'; g.font = '12px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('Ziel: 40 Reihen', PX + PW / 2, 480);
+      if (hintOn && state === 'play') {
+        g.save(); g.globalAlpha = 0.75 + 0.25 * Math.sin(time * 4); g.textAlign = 'center'; g.font = 'bold 15px system-ui, sans-serif';
+        g.lineWidth = 4; g.lineJoin = 'round'; g.strokeStyle = 'rgba(5,10,40,.9)'; g.fillStyle = '#fff';
+        const lines2 = ctx.input.isTouch ? ['Ziehen = bewegen', 'Tippen = drehen'] : ['Pfeile = bewegen', 'Hoch = drehen'];
+        lines2.forEach((t, i) => { g.strokeText(t, BX + BW / 2, 250 + i * 22); g.fillText(t, BX + BW / 2, 250 + i * 22); });
+        g.restore();
+      }
 
       for (const f of floaters) {
         const a = Math.min(1, f.life / f.max * 1.8), k = 1 + Math.max(0, f.life / f.max - 0.8) * 2;
@@ -467,7 +486,6 @@ export default {
     }
 
     spawnNext(); hud();
-    ctx.toast(ctx.input.isTouch ? 'Tippen = drehen · Ziehen = bewegen · Runter wischen = fallen' : '◀ ▶ bewegen · ▲ drehen · Leertaste = fallen · C = halten', 3200);
     ctx.loop(dt => { time += dt; update(dt); draw(); });
     return {
       destroy() {},

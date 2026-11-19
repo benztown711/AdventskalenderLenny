@@ -34,7 +34,7 @@ for (const n of list) {
     page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
     await page.goto(`${base}/?vorschau=rentier${mobile ? '&pad=1' : ''}#/${n}`);
     try {
-      await page.locator('.card .btn.primary').click({ timeout: 5000 });
+      await page.waitForTimeout(400); await page.locator('.card .btn.primary').click({ timeout: 5000 });
       if (await page.locator('.card').count()) errors.push('Overlay nach Start noch sichtbar (Spiel nicht gebaut oder Fehler in create)');
       await page.waitForTimeout(700);
       const box = await page.locator('.stage').boundingBox();

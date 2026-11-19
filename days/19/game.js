@@ -1,7 +1,11 @@
 // Türchen 19: Klötzchen-Puzzle (Lege-Puzzle auf 8x8, Geschenk- und Eissteine)
 import * as L from './logic.js';
 
-export const howto = 'Zieh die Klötzchen unten mit Finger oder Maus ins Gitter. Volle Reihen und Spalten lösen sich auf! Tastatur: Tab/B = Form wechseln, Pfeile = bewegen, Leertaste = ablegen.';
+export const howto = {
+  touch: 'Zieh die Klötzchen unten aufs Brett. Ist eine Reihe oder Spalte voll, verschwindet sie und gibt Punkte.',
+  keys: 'Tab wählt ein Klötzchen, die Pfeiltasten bewegen es, die Leertaste legt es ab (oder zieh es mit der Maus). Volle Reihen und Spalten verschwinden und geben Punkte.',
+};
+export const starsInfo = '★ 300 Punkte · ★★ 900 · ★★★ 2000';
 
 const W = 360, H = 600, C = 40, GX = 20, GY = 76, N = L.N;
 const TRAY_Y = 418, SLOT_W = 120, HOME_CS = 22, HOME_Y = 508;
@@ -54,7 +58,7 @@ export default {
     const rng = Math.random;
     const board = L.newBoard();
     const st = { streak: 0, miss: 0 };
-    let score = 0, shown = 0, over = false, time = 0, lastShownHud = -1;
+    let score = 0, shown = 0, over = false, time = 0, lastShownHud = -1, placed = 0, starsGot = 0;
     const pops = Array.from({ length: N }, () => Array(N).fill(0));
     let ghosts = [], parts = [], floaters = [], banner = null, flash = 0;
     let snow = Array.from({ length: 26 }, () => ({ x: rng() * W, y: rng() * H, r: 0.6 + rng() * 1.6, v: 6 + rng() * 14, ph: rng() * 6 }));
@@ -62,7 +66,7 @@ export default {
     const kb = { on: false, sel: 0, x: 3, y: 3 };
     let setNo = 0;
 
-    const slots = [0, 1, 2].map(i => ({ piece: null, x: SLOT_W * i + SLOT_W / 2, y: HOME_Y, cs: HOME_CS, home: { x: SLOT_W * i + SLOT_W / 2, y: HOME_Y }, fits: true }));
+    const slots = [0, 1, 2].map(i => ({ piece: null, x: SLOT_W * i + SLOT_W / 2, y: HOME_Y, cs: HOME_CS, home: { x: SLOT_W * i + SLOT_W / 2, y: HOME_Y }, fits: true, wob: 0 }));
 
     function refill() {
       const set = L.genSet(board, score, rng);
@@ -133,10 +137,17 @@ export default {
       const h = held; held = null;
       if (e.type === 'pointerup' && h.valid) place(h.i, h.col, h.row);
       else if (e.type === 'pointerup' && h.py > TRAY_Y - 20) ctx.audio.sfx('swoosh'); // zurückgelegt
+      else if (e.type === 'pointerup') noRoom(h);
       else { ctx.audio.sfx('bad'); }
     };
     ctx.on(canvas, 'pointerup', release);
     ctx.on(canvas, 'pointercancel', release);
+
+    // ---------- Fehlablage ----------
+    function noRoom(h) {
+      ctx.audio.sfx('bad'); slots[h.i].wob = 0.45;
+      floatText('Hier ist kein Platz', W / 2, placed === 0 ? GY + 36 : Math.min(Math.max(h.cy, GY + 40), GY + N * C - 40), '#ff9db1', 20, 1.1);
+    }
 
     // ---------- Legen ----------
     function place(i, col, row) {
@@ -145,7 +156,7 @@ export default {
       slots[i].piece = null;
       const empty = L.isEmpty(board);
       const sc = L.scoreMove(st, res, p.cells.length, empty);
-      score += sc.points;
+      score += sc.points; placed++;
       p.cells.forEach(([x, y]) => { pops[row + y][col + x] = 0.0001; });
       const cx = GX + (col + p.w / 2) * C, cy = GY + (row + p.h / 2) * C;
       ctx.audio.tone(330 + p.cells.length * 25, 0.09, 'triangle', 0.2, 200);
@@ -177,6 +188,12 @@ export default {
       shown = Math.max(shown, score - sc.points);
       if (slots.every(s => !s.piece)) refill(); else refits();
       kb.sel = nextSel(i, 1);
+      const sNow = L.starsFor(score);
+      if (sNow > 0) {
+        const nx = L.STAR_POINTS[sNow];
+        ctx.progress({ stars: sNow, score, text: sNow >= 3 ? 'Alle 3 Sterne erreicht!' : `Noch ${nx - score} Punkte bis zum ${sNow + 1}. Stern.` });
+        if (sNow > starsGot) { starsGot = sNow; ctx.toast(`${'★'.repeat(sNow)} Stern erreicht!`, 1400); }
+      }
       // Spielende?
       if (slots.every(s => !s.piece || !s.fits)) endGame();
     }
@@ -216,7 +233,7 @@ export default {
       if (over || ctx.paused) return;
       if (!kb.on) { kbSelect(1); return; }
       const h = kbHeld(); if (!h) return;
-      if (h.valid) { place(h.i, h.col, h.row); } else { ctx.audio.sfx('bad'); ctx.fx.shake(120); }
+      if (h.valid) { place(h.i, h.col, h.row); } else { noRoom(h); ctx.fx.shake(120); }
     }
     ctx.input.onPress(n => { if (n === 'a') kbPlace(); else if (n === 'b') kbSelect(1); else kbMove(n); });
     ctx.on(window, 'keydown', e => { if (e.key === 'Tab') { e.preventDefault(); if (!e.repeat) kbSelect(e.shiftKey ? -1 : 1); } });
@@ -243,6 +260,11 @@ export default {
         for (let k = 0; k < 3; k++) { g.fillStyle = k < 3 - st.miss ? GOLD : 'rgba(255,255,255,.2)'; g.beginPath(); g.arc(sx - 52 - k * 12, 50, 4, 0, 6.3); g.fill(); }
       } else { g.fillStyle = 'rgba(255,255,255,.3)'; g.font = '700 22px system-ui, sans-serif'; g.fillText('–', sx, 56); }
 
+      { // nächste Sternschwelle, dauerhaft klein
+        const ns = L.starsFor(score);
+        g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.72)'; g.font = '600 13px system-ui, sans-serif';
+        g.fillText(ns >= 3 ? 'Alle 3 Sterne!' : `Nächster Stern: ${L.STAR_POINTS[ns]}`, W / 2, 58);
+      }
       // Brett
       g.fillStyle = '#121f52'; rr(g, GX - 6, GY - 6, N * C + 12, N * C + 12, 14); g.fill();
       g.strokeStyle = 'rgba(142,202,230,.35)'; g.lineWidth = 2; g.stroke();
@@ -258,6 +280,13 @@ export default {
         g.fillStyle = `rgba(255,209,102,${pulse})`; g.strokeStyle = 'rgba(255,230,160,.9)'; g.lineWidth = 2;
         hl.rows.forEach(y => { rr(g, GX - 2, GY + y * C + 1, N * C + 4, C - 2, 9); g.fill(); g.stroke(); });
         hl.cols.forEach(x => { rr(g, GX + x * C + 1, GY - 2, C - 2, N * C + 4, 9); g.fill(); g.stroke(); });
+      }
+      if (placed === 0 && !over) { // Hilfszeile bis zum ersten gelegten Stück
+        g.fillStyle = 'rgba(11,20,55,.88)'; rr(g, GX + 14, GY + N * C / 2 - 34, N * C - 28, 68, 14); g.fill();
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.font = '700 15px system-ui, sans-serif';
+        g.fillText('Zieh ein Klötzchen aufs Brett.', W / 2, GY + N * C / 2 - 12);
+        g.fillText('Volle Reihen verschwinden!', W / 2, GY + N * C / 2 + 12);
+        g.textBaseline = 'alphabetic';
       }
       // Steine
       for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
@@ -309,7 +338,8 @@ export default {
         const tx = isHeld ? held.cx : s.home.x, ty = isHeld ? held.cy : s.home.y, tcs = isHeld ? C : HOME_CS;
         const k = 1 - Math.exp(-dt * (isHeld ? 40 : 14));
         s.x += (tx - s.x) * k; s.y += (ty - s.y) * k; s.cs += (tcs - s.cs) * k;
-        const cs = s.cs, x0 = s.x - p.w * cs / 2, y0 = s.y - p.h * cs / 2;
+        const wobx = s.wob > 0 ? Math.sin(s.wob * 60) * 7 * (s.wob / 0.45) : 0;
+        const cs = s.cs, x0 = s.x + wobx - p.w * cs / 2, y0 = s.y - p.h * cs / 2;
         if (isHeld) { // Schatten unter der schwebenden Form
           g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(s.x, y0 + p.h * cs + 14, p.w * cs * 0.4, 7, 0, 0, 6.3); g.fill();
         }
@@ -317,9 +347,6 @@ export default {
         g.globalAlpha = s.fits || isHeld ? 1 : 0.35;
         p.cells.forEach(([x, y], kk) => block(g, x0 + x * cs, y0 + y * cs + bob, cs, p.color, kk === p.star, t));
         g.globalAlpha = 1;
-      }
-      if (!held && !over && !ctx.input.isTouch && setNo === 1 && score === 0) {
-        g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '600 13px system-ui, sans-serif'; g.fillText('Zieh ein Klötzchen ins Gitter', W / 2, TRAY_Y - 4);
       }
 
       // Partikel
@@ -364,6 +391,7 @@ export default {
     ctx.loop(dt0 => {
       const dt = Math.max(0, dt0);
       time += dt;
+      for (const sl of slots) if (sl.wob > 0) sl.wob -= dt;
       for (const s of snow) { s.y += s.v * dt; if (s.y > H + 4) { s.y = -4; s.x = rng() * W; } }
       if (shown < score) shown = Math.min(score, shown + Math.max(dt * 260, (score - shown) * dt * 6));
       // Tasten-Wiederholung (Pfeile gedrückt halten)

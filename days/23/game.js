@@ -1,7 +1,11 @@
 // Türchen 23: Laternen-Labyrinth
 import { generateLevel, reach, LEVELS, DX, DY } from './maze.js';
 
-export const howto = 'Im Wichtel-Lager ist das Licht aus! Lauf mit Pfeiltasten/WASD (Touch: Stick) durch das Dunkel, finde 3 goldene Schlüssel und öffne die Tür zum Geschenk. Taste B oder der Karten-Knopf zeigt die Karte.';
+export const howto = {
+  touch: 'Ziehe den Stick unten, um durchs Dunkel zu laufen. Finde 3 goldene Schlüssel und öffne die Tür zum Geschenk, der Karten-Knopf zeigt die Karte.',
+  keys: 'Laufe mit Pfeiltasten oder WASD durchs Dunkel. Finde 3 goldene Schlüssel und öffne die Tür zum Geschenk, Taste B zeigt die Karte.',
+};
+export const starsInfo = '★ Raum 1 geschafft · ★★ Raum 2 geschafft · ★★★ alle 4 Räume (jeder Raum gibt ein Herz zurück)';
 
 const T = 26, VW = 360, VH = 560, PR = 8, SPEED = 108;
 const NAMES = ['Vorratskeller', 'Spielzeug-Werkstatt', 'Rentierstall', 'Geschenke-Lager'];
@@ -14,6 +18,7 @@ export default {
     ctx.input.pad({ stick: true, b: 'Karte' });
 
     let li = 0, hearts = 3, score = 0, candlesTotal = 0, completed = 0, over = false;
+    let movedOnce = false, maxLevel = Math.max(0, Math.min(4, ctx.load('maxLevel', 0) | 0));
     let phase = 'play', phaseT = 0, showMap = false, time = 0, stopMusic = null;
     let M, P, keysGot, keyObjs, candleObjs, wormObjs, mouseObjs, ghostObjs, chims, parts;
     let oil, boost, hintT, hintPath, hintCool, lt, grace, inv, seen, litSet, cam, stepT, humT, tpLock, doorOpen, bumpCool, mouseToast, levelCandles;
@@ -48,7 +53,7 @@ export default {
       hud();
       ctx.toast(`Raum ${i + 1}: ${NAMES[i]}`, 1800);
     }
-    const hud = () => ctx.hud.set({ Raum: `${li + 1}/4`, Punkte: score });
+    const hud = () => ctx.hud.set({ Raum: `${li + 1}/4`, Punkte: score, Rekord: `${maxLevel}/4` });
 
     // ---------- Musik ----------
     function startMusic() {
@@ -97,6 +102,7 @@ export default {
       const ox = P.x, oy = P.y, dx = P.vx * dt, dy = P.vy * dt, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 3));
       for (let i = 0; i < n; i++) stepMove(dx / n, dy / n);
       const moved = Math.hypot(P.x - ox, P.y - oy) / dt;
+      if (moved > 5) movedOnce = true;
       P.walk += moved * dt * 0.28;
       if (moved > 25) { stepT += dt; if (stepT > 0.28) { stepT = 0; ctx.audio.tone(rnd(150, 200), 0.035, 'triangle', 0.05); } }
     }
@@ -225,11 +231,13 @@ export default {
 
     function levelDone() {
       if (phase !== 'play') return;
-      phase = 'trans'; phaseT = 0; completed = li + 1; ctx.save('maxLevel', Math.max(ctx.load('maxLevel', 0), completed));
+      phase = 'trans'; phaseT = 0; completed = li + 1; maxLevel = Math.max(maxLevel, completed); ctx.save('maxLevel', Math.max(ctx.load('maxLevel', 0), completed));
       const par = 80 + li * 40, bonus = Math.max(0, Math.round(par - lt));
+      const gotHeart = hearts < 3; hearts = Math.min(3, hearts + 1);
       score += 50 + bonus; hud();
       burst(P.x, P.y, '#ffd166', 40, 170, 1.1); ctx.audio.sfx('level');
-      ctx.toast(li < 3 ? `Geschafft! +${50 + bonus} Punkte` : 'Alle Geschenke gefunden!', 1600);
+      ctx.toast(li < 3 ? `Geschafft! +${50 + bonus} Punkte${gotHeart ? ' und ein Herz zurück' : ''}` : 'Alle Geschenke gefunden!', 1800);
+      if (li < 3) ctx.progress({ stars: completed >= 2 ? 2 : 1, score, text: completed < 2 ? 'Schaffe Raum 2 für den zweiten Stern.' : 'Schaffe alle 4 Räume für den dritten Stern.' });
       if (li >= 3) ctx.timeout(() => endGame(true), 1500);
     }
     function endGame(won) {
@@ -433,6 +441,13 @@ export default {
       g.restore();
       drawHud();
       if (showMap) drawMap();
+      else if (!movedOnce && li === 0 && phase === 'play' && !over) {
+        g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 15px sans-serif'; g.lineWidth = 4; g.lineJoin = 'round';
+        g.strokeStyle = 'rgba(4,6,26,.9)'; g.fillStyle = '#ffe08a'; g.globalAlpha = 0.8 + 0.2 * Math.sin(time * 4);
+        const ls = ctx.input.isTouch ? ['Stick ziehen und laufen,', 'finde 3 goldene Schlüssel!'] : ['Pfeiltasten oder WASD: laufen,', 'finde 3 goldene Schlüssel!'];
+        ls.forEach((t, k) => { g.strokeText(t, VW / 2, VH - 80 + k * 22); g.fillText(t, VW / 2, VH - 80 + k * 22); });
+        g.restore();
+      }
       if (phase === 'trans') { g.fillStyle = `rgba(4,6,26,${Math.min(1, phaseT / 1.2)})`; g.fillRect(0, 0, VW, VH); }
     }
     function glow(x, y, color, r, a) {
@@ -479,7 +494,7 @@ export default {
       g.fillStyle = '#2a3060'; g.fillRect(202, 12, 90, 10);
       g.fillStyle = boost > 0 ? '#fff1a8' : oil > 0.25 ? '#ffb347' : '#ef476f'; g.fillRect(202, 12, 90 * oil, 10);
       g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 1; g.strokeRect(202.5, 12.5, 89, 9);
-      g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+      g.fillStyle = '#fff'; g.font = 'bold 14px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
       if (boost > 0) g.fillText('+', 297, 17);
       // Karten-Knopf
       g.fillStyle = showMap ? 'rgba(255,209,102,.9)' : 'rgba(20,28,70,.85)'; g.beginPath(); g.roundRect(mapBtn.x, mapBtn.y, mapBtn.w, mapBtn.h, 10); g.fill();
@@ -504,8 +519,8 @@ export default {
       chims.forEach((c, i) => { if (seenXY(c.x, c.y)) dot(c.x, c.y, i ? '#c77dff' : '#06d6a0', s * 0.5); });
       if (seenXY(cx2x(M.exit), cy2y(M.exit))) dot(cx2x(M.exit), cy2y(M.exit), '#ef476f', s * 0.6);
       dot(P.x, P.y, Math.sin(time * 8) > 0 ? '#fff' : '#ffd166', s * 0.7);
-      g.fillStyle = '#9fb0e6'; g.font = '12px sans-serif'; g.fillText('Gold = Schlüssel, Rot = Geschenk, Weiß = du', VW / 2, VH - 38);
-      g.fillText('Tippen oder B zum Schließen', VW / 2, VH - 20);
+      g.fillStyle = '#9fb0e6'; g.font = '14px sans-serif'; g.fillText('Gold = Schlüssel, Rot = Geschenk, Weiß = du', VW / 2, VH - 42);
+      g.fillText(ctx.input.isTouch ? 'Tippen zum Schließen' : 'Taste B zum Schließen', VW / 2, VH - 20);
     }
 
     // ---------- Eingabe ----------

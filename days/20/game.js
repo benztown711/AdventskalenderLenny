@@ -2,7 +2,11 @@
 import { createWorld, RADII, MAXLV, JAR, DANGER_SECONDS } from './physik.js';
 import { drawBall, NAMES, TINT } from './balls.js';
 
-export const howto = 'Lass die Deko ins Glas fallen: zwei gleiche Kugeln verschmelzen zur nächsten Stufe! Mit Maus oder Finger zielen und loslassen (Tastatur: ◀ ▶ und Leertaste). Liegt etwas zu lange über der roten Linie, ist Schluss. Einmal pro Spiel hilft „Schütteln“ (Taste B).';
+export const howto = {
+  touch: 'Ziehe den Finger über das Glas und lass los, dann fällt die Kugel. Zwei gleiche Kugeln verschmelzen zur nächsten Stufe, einmal pro Spiel hilft „Schütteln“.',
+  keys: 'Ziele mit den Pfeiltasten links/rechts oder der Maus, Leertaste lässt die Kugel fallen. Zwei gleiche Kugeln verschmelzen, einmal pro Spiel hilft Taste B (Schütteln).',
+};
+export const starsInfo = `★ Stufe 7 (${NAMES[6]}) · ★★ Stufe 8 (${NAMES[7]}) · ★★★ Stufe 9 (${NAMES[8]})`;
 
 const W = 360, H = 560, HAND_Y = 130;
 const DROP_W = [20, 24, 24, 20, 12];           // Gewichte für die Stufen 1 bis 5, die als neue Kugel kommen
@@ -37,7 +41,6 @@ export default {
     const hud = () => ctx.hud.set({ Punkte: score, Stufe: `${hi + 1}/10`, Rekord: Math.max(ctx.best(), score) });
     hud();
     ctx.input.pad({ dpad: 'lr', a: 'Fallen', b: 'Schütteln' });
-    ctx.toast('Gleiche Kugeln verschmelzen!', 2200);
 
     // ---------- Aktionen ----------
     function spawnHand() { hand = { level: next, x: hand ? hand.x : W / 2, t: 0 }; next = pick(); hand.x = clampX(hand.x, hand.level); }
@@ -78,7 +81,7 @@ export default {
       if (e.level > hi) {
         hi = e.level; ctx.save('hi', Math.max(hi, ctx.load('hi', -1)));
         const star = STAR_AT.indexOf(hi) + 1;
-        if (star > 0) { ctx.toast(`Stufe ${hi + 1}: ${NAMES[hi]}! Stern ${star} sicher`, 2000); ctx.audio.sfx('level'); ctx.fx.confetti(30 + star * 20); }
+        if (star > 0) { ctx.progress({ stars: star, score, text: star >= 3 ? 'Alle 3 Sterne sicher! Weiter so für den Weihnachtsstern.' : `Für ${star + 1} Sterne baue Stufe ${STAR_AT[star] + 1} (${NAMES[STAR_AT[star]]}).` }); ctx.toast(`Stufe ${hi + 1}: ${NAMES[hi]}! Stern ${star} sicher`, 2000); ctx.audio.sfx('level'); ctx.fx.confetti(30 + star * 20); }
         else if (hi >= 2) ctx.toast(`Neu: ${NAMES[hi]}!`, 1300);
       }
       hud();
@@ -199,7 +202,7 @@ export default {
         const k = Math.min(1, d / DANGER_SECONDS);
         g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(JAR.l + 60, y - 18, JAR.r - JAR.l - 120, 8);
         g.fillStyle = '#ef476f'; g.fillRect(JAR.l + 60, y - 18, (JAR.r - JAR.l - 120) * k, 8);
-        g.fillStyle = '#fff'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
+        g.fillStyle = '#fff'; g.font = 'bold 14px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
         g.fillText('Achtung!', W / 2, y - 22);
       }
       g.restore();
@@ -266,19 +269,26 @@ export default {
       g.strokeStyle = on ? '#c77dff' : 'rgba(255,255,255,.15)'; g.lineWidth = 2; g.stroke();
       g.fillStyle = on ? '#fff' : 'rgba(255,255,255,.35)'; g.textAlign = 'center'; g.font = '700 13px system-ui, sans-serif';
       g.fillText(on ? 'Schütteln' : 'benutzt', BTN.x + BTN.w / 2, BTN.y + (on ? 14 : 20));
-      if (on) { g.font = '600 10px system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.65)'; g.fillText('einmal · Taste B', BTN.x + BTN.w / 2, BTN.y + 29); }
+      if (on) { g.font = '600 12px system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(ctx.input.isTouch ? 'einmal' : 'einmal (B)', BTN.x + BTN.w / 2, BTN.y + 29); }
       // Evolution-Leiste
-      const y = 541, pitch = 32, x0 = 38;
+      const y = 546, pitch = 32, x0 = 38;
       g.strokeStyle = 'rgba(255,209,102,.25)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x0, y); g.lineTo(x0 + pitch * 9, y); g.stroke();
       for (let i = 0; i <= MAXLV; i++) {
-        const x = x0 + i * pitch, r = 6 + i * 0.95, got = i <= hi;
+        const x = x0 + i * pitch, r = 5 + i * 0.8, got = i <= hi;
         drawBall(g, i, x, y, r, 0, { t: time, id: i, alpha: got ? 1 : 0.3 });
         if (i === hi) { g.strokeStyle = '#ffd166'; g.lineWidth = 2.2; g.shadowColor = '#ffd166'; g.shadowBlur = 8 + 4 * Math.sin(time * 5); g.beginPath(); g.arc(x, y, r + 3.5, 0, TAU); g.stroke(); g.shadowBlur = 0; }
         if (i === bestLv && bestLv > hi) { g.fillStyle = '#8ecae6'; g.beginPath(); g.arc(x, y - r - 5, 2.2, 0, TAU); g.fill(); }
       }
       // Sterne-Markierungen unter 7/8/9
-      g.fillStyle = 'rgba(255,209,102,.85)'; g.font = '10px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-      STAR_AT.forEach((l, k) => g.fillText('★'.repeat(k + 1), x0 + l * pitch, 558));
+      g.fillStyle = 'rgba(255,209,102,.85)'; g.font = '12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+      STAR_AT.forEach((l, k) => g.fillText((k + 1) + '★', x0 + l * pitch, 530));
+      if (drops === 0 && !over) {
+        g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 14px system-ui, sans-serif'; g.lineWidth = 4; g.lineJoin = 'round'; g.strokeStyle = 'rgba(11,20,55,.9)'; g.fillStyle = '#fff';
+        g.globalAlpha = 0.8 + 0.2 * Math.sin(time * 4);
+        const ls = ctx.input.isTouch ? ['Ziehen und loslassen = fallen', 'Gleiche Kugeln verschmelzen!'] : ['◀ ▶ zielen, Leertaste = fallen', 'Gleiche Kugeln verschmelzen!'];
+        ls.forEach((t, i) => { g.strokeText(t, W / 2, 190 + i * 22); g.fillText(t, W / 2, 190 + i * 22); });
+        g.restore();
+      }
     }
 
     function draw() {

@@ -1,5 +1,10 @@
 // Türchen 5: Rentier-Rüber (Überquer-Spiel mit Straße, Fluss und fünf Ställen)
-export const howto = 'Hüpf mit den Pfeiltasten, durch Wischen oder mit den Pfeil-Buttons Feld für Feld nach oben. Tippen = nach vorne hüpfen. Weich den Fahrzeugen aus, spring auf Eisschollen und Baumstämme und bring das Rentier in alle 5 Ställe!';
+export const howto = {
+  touch: 'Tippe zum Hüpfen nach vorn, wische oder nimm die Pfeil-Knöpfe zur Seite. Bring das Rentier über Straße und Fluss in alle 5 Ställe.',
+  keys: 'Hüpfe mit den Pfeiltasten Feld für Feld. Bring das Rentier über Straße und Fluss in alle 5 Ställe.',
+};
+export const starsInfo = '★ Level 1 geschafft · ★★ Level 2 · ★★★ Level 3 (je alle 5 Ställe füllen)';
+const VEHNAME = { plow: 'Schneepflug', van: 'Transporter', sleigh: 'Schlitten', mobil: 'Schneemobil' };
 
 const W = 360, H = 560, C = 40, START = 12, MEDIAN = 6;
 const isRiver = r => r >= 1 && r <= 5;
@@ -21,7 +26,8 @@ export default {
 
     let level = 1, score = 0, lives = 3, levelsDone = 0;
     let lanes = [], stalls = [], parts = [], texts = [], prints = [], carrot = null;
-    let time = 0, over = false, god = false;
+    let time = 0, over = false, god = false, grace = 0, cause = null;
+    const tally = { hit: 0, splash: 0, time: 0 };
     let state = 'play', stateT = 0, deathKind = '', after = null;
     let tMax = 30, tLeft = 30, running = false, lastTick = 99;
     let r = null, bestRow = START, queue = null, holdT = 0, holdCool = 0, shownHint = false, banner = null, shakeT = 0;
@@ -38,15 +44,15 @@ export default {
     }
     function buildLanes() {
       lanes = [];
-      const mv = Math.min(2.0, 1 + 0.11 * (level - 1)), mr = Math.min(1.8, 1 + 0.09 * (level - 1));
+      const mv = level === 1 ? 0.7 : Math.min(2.0, 1 + 0.11 * (level - 1)), mr = Math.min(1.8, 1 + 0.09 * (level - 1));
       const types = shuffle(['plow', 'van', 'sleigh', 'mobil']); types.push(pick(['plow', 'van', 'sleigh', 'mobil']));
       if (types[4] === 'sleigh' || types[4] === 'mobil') { const k = types.findIndex(t => t === 'plow' || t === 'van'); [types[4], types[k]] = [types[k], types[4]]; }
       const dir0 = Math.random() < 0.5 ? 1 : -1;
-      const gMin = Math.max(66, 118 - 8 * (level - 1));
+      const gMin = level === 1 ? 150 : Math.max(66, 118 - 8 * (level - 1));
       for (let i = 0; i < 5; i++) { // Straße: Reihe 7..11
         const t = types[i], row = 7 + i, d = i % 2 ? -dir0 : dir0;
         const lane = { row, kind: 'road', type: t, dir: d, vx: d * VEH[t].v * rnd(0.92, 1.12) * mv };
-        genLane(lane, () => ({ w: VEH[t].w, hue: Math.random() }), () => rnd(gMin, gMin + 85));
+        genLane(lane, () => ({ w: VEH[t].w, hue: Math.random() }), () => rnd(gMin, gMin + (level === 1 ? 100 : 85)));
         lanes[row] = lane;
       }
       const rd0 = Math.random() < 0.5 ? 1 : -1;
@@ -76,7 +82,7 @@ export default {
     }
     function respawn(first) {
       r = { x: colX(4), row: START, y: rowY(START), py: START, hop: null, squash: 0, rot: 0, hidden: false, face: 0 };
-      bestRow = START; queue = null; tLeft = tMax; running = false; lastTick = 99; state = 'play'; stateT = 0; carrot = null;
+      bestRow = START; queue = null; cause = null; grace = first ? 0 : 1.5; tLeft = tMax; running = false; lastTick = 99; state = 'play'; stateT = 0; carrot = null;
       if (level >= 3) { const row = pick([6, 7, 8, 9, 10, 11]); carrot = { x: colX(1 + Math.floor(Math.random() * 7)), row }; }
       if (first && level > 1) banner = { text: 'Level ' + level, sub: level === 2 ? 'Tauchende Schollen!' : level === 3 ? 'Karotten = Bonus!' : 'Schneller und dichter!', t: 1.8 };
     }
@@ -139,6 +145,7 @@ export default {
       r.hidden = true;
       if (left === 0) {
         state = 'cleared'; stateT = 0; levelsDone = Math.max(levelsDone, level); score += 200; hud();
+        ctx.progress({ stars: Math.min(3, levelsDone), score, text: `Level ${levelsDone} geschafft. Dein Fortschritt ist gesichert!` });
         A.sfx('level'); ctx.fx.confetti(90); if (levelsDone <= 3) ctx.fx.emojiBurst('⭐');
         banner = { text: 'Level ' + level + ' geschafft!', sub: levelsDone <= 3 ? levelsDone + (levelsDone === 1 ? ' Stern' : ' Sterne') + ' sicher! Weiter geht\'s!' : 'Es wird noch wilder!', t: 2.2 };
       } else { state = 'rest'; stateT = 0; after = () => respawn(false); }
@@ -146,27 +153,36 @@ export default {
 
     function die(kind, veh) {
       if (state !== 'play') return;
-      state = 'dead'; stateT = 0; deathKind = kind; running = false; queue = null; r.hop = null;
-      lives--; hud();
+      state = 'dead'; stateT = 0; deathKind = kind; running = false; queue = null; r.hop = null; banner = null;
+      lives--; tally[kind]++; hud();
+      cause = { t: 0, text: kind === 'hit' ? `Vom ${VEHNAME[veh?.type] || 'Fahrzeug'} erwischt!` : kind === 'splash' ? 'Platsch! Ins Wasser gefallen' : 'Zeit abgelaufen' };
+      if (kind === 'hit' && veh) cause.text = { plow: 'Vom Schneepflug erwischt!', van: 'Vom Transporter erwischt!', sleigh: 'Vom Schlitten erwischt!', mobil: 'Vom Schneemobil erwischt!' }[veh.type] || cause.text;
       if (kind === 'splash') {
         A.sfx('pop'); tone(520, 0.3, 'sine', 0.2, 120); A.sfx('swoosh');
         burst(r.x, r.y, ['#8ecae6', '#ffffff', '#cdeeff'], 34, { up: true, v0: 80, v1: 260, grav: 520, big: 5 });
         parts.push({ x: r.x, y: r.y, vx: 0, vy: 0, life: 0.7, max: 0.7, ring: true, color: '#cdeeff', size: 4, grav: 0 });
-        say('Platsch!', r.x, r.y - 20, '#8ecae6'); r.hidden = true; shakeT = 0.18;
+        r.hidden = true; shakeT = 0.18;
       } else if (kind === 'hit') {
         A.sfx('hit'); ctx.fx.shake(300);
         r.vx = (veh ? veh.dir : 1) * 170; r.vy = -190; r.spin = 13;
-        burst(r.x, r.y, ['#ffffff', '#ffd166', '#cdeeff'], 24, { v1: 200 }); say('Purzelbaum!', r.x, Math.max(30, r.y - 26), '#ffd166');
-      } else { A.sfx('bad'); say('Zeit um! Zzz', r.x, r.y - 24, '#8ecae6'); }
+        burst(r.x, r.y, ['#ffffff', '#ffd166', '#cdeeff'], 24, { v1: 200 });
+      } else { A.sfx('bad'); }
       after = () => { if (lives <= 0) gameOver(); else respawn(false); };
     }
     function gameOver() {
       over = true; state = 'over';
       const s = Math.min(3, levelsDone);
-      const text = s === 0 ? 'Füll alle 5 Ställe, dann ist Level 1 geschafft und du bekommst den ersten Stern!'
-        : s === 1 ? 'Level 1 geschafft! Für den 2. Stern musst du auch Level 2 schaffen (da tauchen Schollen ab).'
-        : s === 2 ? 'Zwei Sterne! Für den 3. Stern fehlt noch Level 3 mit Karotten-Bonus.'
+      const worst = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0];
+      const tip = tally[worst] === 0 ? '' : worst === 'hit'
+        ? 'Meist haben dich Fahrzeuge erwischt. Tipp: Bleib am Mittelstreifen stehen und hüpf erst, wenn eine Lücke da ist.'
+        : worst === 'splash'
+          ? 'Meist bist du ins Wasser gefallen. Tipp: Hüpf nur auf Stämme und Schollen, auf denen du sicher stehst, und meide Schollen mit rotem Punkt (sie tauchen ab).'
+          : 'Meist war die Zeit zu knapp. Tipp: Zögere nicht lange und halte die Pfeiltaste gedrückt. Karotten bringen Zeit!';
+      const next = s === 0 ? 'Füll alle 5 Ställe für den ersten Stern.'
+        : s === 1 ? 'Level 1 geschafft! Für den 2. Stern schaff auch Level 2 (da tauchen Schollen ab).'
+        : s === 2 ? 'Zwei Sterne! Für den 3. Stern fehlt Level 3 mit Karotten-Bonus.'
         : 'Alle 3 Sterne! Du hast ' + levelsDone + ' Levels geschafft.';
+      const text = s === 3 ? next : tip + ' ' + next;
       ctx.timeout(() => ctx.finish({ won: s > 0, stars: s, score, text }), 500);
     }
 
@@ -201,6 +217,8 @@ export default {
       prints = prints.filter(p => (p.life -= dt) > 0);
       if (!r) return;
       if (r.squash > 0) r.squash -= dt;
+      if (grace > 0) grace -= dt;
+      if (cause) cause.t += dt;
       if (state !== 'dead') r.y = r.hop ? rowY(r.py) + (rowY(r.row) - rowY(r.py)) * Math.min(1, r.hop.t / r.hop.dur) : rowY(r.row);
 
       if (state === 'play') {
@@ -215,7 +233,7 @@ export default {
         if (held) { holdT += dt; holdCool -= dt; if (holdT > 0.32 && holdCool <= 0 && !r.hop) { holdCool = 0.14; tryHop(...D[held]); } } else { holdT = 0; holdCool = 0; }
         if (!god) {
           if (isRiver(r.row) && !r.hop) { if (!standing()) return die('splash'); if (r.x < 0 || r.x > W) return die('splash'); }
-          for (const row of r.hop ? [r.row, r.py] : [r.row]) if (isRoad(row)) {
+          if (grace <= 0) for (const row of r.hop ? [r.row, r.py] : [r.row]) if (isRoad(row)) {
             for (const it of lanes[row].items) if (Math.abs(r.x - it.x) < 10 + it.w / 2 - 4 && Math.abs(r.y - rowY(row)) < 18) return die('hit', lanes[row]);
           }
         }
@@ -226,7 +244,7 @@ export default {
         }
       } else if (state === 'dead') {
         if (deathKind === 'hit' && r.vx !== undefined) { r.vy += 620 * dt; r.x += r.vx * dt; r.y += r.vy * dt; r.rot += r.spin * dt; }
-        if (stateT > 1.0) { const f = after; after = null; if (f) f(); }
+        if (stateT > 1.4) { const f = after; after = null; if (f) f(); }
       } else if (state === 'rest') {
         if (stateT > 0.6) { const f = after; after = null; if (f) f(); }
       } else if (state === 'cleared') {
@@ -388,7 +406,7 @@ export default {
       g.fillStyle = '#1b2650'; rr(bx, 13 * C + 13, bw, 14, 7); g.fill();
       const low = tLeft < 6 && running; g.fillStyle = low ? (Math.sin(time * 14) > 0 ? '#ef476f' : '#ff9aae') : p > 0.5 ? '#06d6a0' : '#ffd166';
       if (p > 0.01) { rr(bx, 13 * C + 13, Math.max(10, bw * p), 14, 7); g.fill(); }
-      g.fillStyle = '#e6f3ff'; g.font = 'bold 11px sans-serif'; g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText('Zeit', bx - 8, 13 * C + 20);
+      g.fillStyle = '#e6f3ff'; g.font = 'bold 14px sans-serif'; g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText('Zeit', bx - 8, 13 * C + 20);
     }
     function draw() {
       g.save();
@@ -410,7 +428,7 @@ export default {
         const dead = state === 'dead';
         if (!dead || deathKind !== 'hit') { g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(r.x, r.y + 15, 11 - lift * 0.3, 4, 0, 0, 6.3); g.fill(); }
         if (dead && deathKind === 'time') { g.save(); g.globalAlpha = 0.95; drawDeer(r.x, r.y - 3, 0.9, 1.1, 0.8, Math.sin(time * 3) * 0.12); g.restore(); }
-        else drawDeer(r.x, r.y - lift - 3, 0.9, sx, sy, dead ? r.rot : 0);
+        else { if (grace > 0 && Math.sin(time * 30) > 0) g.globalAlpha = 0.45; drawDeer(r.x, r.y - lift - 3, 0.9, sx, sy, dead ? r.rot : 0); g.globalAlpha = 1; }
       }
       if (state === 'dead' && deathKind === 'splash') { // schwimmende Nase
         const t = stateT; g.globalAlpha = Math.max(0, 1 - t / 1.0); g.shadowColor = '#ef476f'; g.shadowBlur = 12; g.fillStyle = '#ef476f';
@@ -429,12 +447,21 @@ export default {
       g.globalAlpha = 1;
       if (!shownHint && state === 'play' && r && !r.hop && level === 1) {
         const b = Math.sin(time * 6) * 4; g.fillStyle = '#ffd166'; g.beginPath(); g.moveTo(r.x, r.y - 30 + b); g.lineTo(r.x - 9, r.y - 18 + b); g.lineTo(r.x + 9, r.y - 18 + b); g.fill();
-        g.font = 'bold 15px sans-serif'; g.lineWidth = 4; g.strokeStyle = '#0b1437'; g.strokeText('Tippen oder Pfeiltaste: hüpf los!', W / 2, START * C - 44); g.fillStyle = '#fff'; g.fillText('Tippen oder Pfeiltaste: hüpf los!', W / 2, START * C - 44);
+        const ht = ctx.input.isTouch ? 'Tippe: hüpf los!' : 'Pfeil hoch: hüpf los!';
+        g.font = 'bold 17px sans-serif'; g.lineWidth = 4; g.strokeStyle = '#0b1437'; g.strokeText(ht, W / 2, START * C - 44); g.fillStyle = '#fff'; g.fillText(ht, W / 2, START * C - 44);
+      }
+      if (cause && state === 'dead') {
+        g.save(); g.globalAlpha = Math.min(1, cause.t * 6) * Math.min(1, (1.4 - cause.t) * 5);
+        g.font = '900 21px sans-serif'; const tw = Math.min(W - 24, g.measureText(cause.text).width + 36);
+        g.fillStyle = 'rgba(8,14,40,.88)'; rr(W / 2 - tw / 2, 238, tw, 46, 14); g.fill();
+        g.strokeStyle = cause.text.startsWith('Platsch') ? '#8ecae6' : cause.text.startsWith('Zeit') ? '#ffd166' : '#ef476f'; g.lineWidth = 2.5; g.stroke();
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText(cause.text, W / 2, 262);
+        g.restore();
       }
       if (banner) {
         g.globalAlpha = Math.min(1, banner.t * 2); g.fillStyle = 'rgba(8,14,40,.78)'; rr(30, 200, W - 60, 82, 16); g.fill();
         g.textAlign = 'center'; g.font = 'bold 26px sans-serif'; g.fillStyle = '#ffd166'; g.fillText(banner.text, W / 2, 230);
-        g.font = 'bold 14px sans-serif'; g.fillStyle = '#e6f3ff'; g.fillText(banner.sub, W / 2, 262); g.globalAlpha = 1;
+        g.font = 'bold 16px sans-serif'; g.fillStyle = '#e6f3ff'; g.fillText(banner.sub, W / 2, 262); g.globalAlpha = 1;
       }
       g.restore();
       drawUI();
