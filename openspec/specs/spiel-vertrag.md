@@ -5,7 +5,10 @@ Jedes Türchen liegt in `days/NN/` und darf NUR Dateien in diesem Ordner anlegen
 Referenz-Umsetzung: `days/02/game.js`. Rahmen-Code: `js/core/shell.js`, `js/core/input.js`, `js/core/audio.js`.
 
 ```js
-export const howto = 'Ein bis zwei Sätze Anleitung auf Deutsch (Tastatur UND Touch erwähnen).';
+// Anleitung je Gerät: höchstens zwei kurze Sätze, nur die Bedienung, die es auf dem Gerät gibt.
+export const howto = { touch: 'Wische ... / Tippe ...', keys: 'Pfeiltasten ... Leertaste ...' };
+// Eine Zeile, wofür es Sterne gibt. Steht auf der Start-Karte.
+export const starsInfo = '★ ab Level 3 · ★★ ab Level 6 · ★★★ alle 8 Level';
 export default {
   create(ctx) {            // wird bei jedem Start und bei "Nochmal" neu aufgerufen
     // ... Spiel aufbauen ...
@@ -35,6 +38,7 @@ export default {
 | `ctx.fx.confetti()`, `ctx.fx.emojiBurst('⭐')`, `ctx.fx.shake()` | Effekte |
 | `ctx.save(key, wert)`, `ctx.load(key, fallback)`, `ctx.best()` | Speicher pro Türchen (z. B. erreichtes Level), bisheriger Rekord |
 | `ctx.paused`, `ctx.onPause(fn(paused))` | Pause-Status |
+| `ctx.progress({stars, score, text})` | Zwischenstand melden, sobald Sterne verdient sind (z. B. nach jedem gelösten Level). Sterne werden sofort gesichert; der Zurück-Pfeil zeigt damit die Ergebnis-Karte statt den Fortschritt zu verwerfen. |
 | `ctx.finish({won, stars, score, text})` | Spielende melden. Zeigt Ergebnis-Karte, speichert Sterne (0 bis 3) und Rekord. Sieg-Ton und Konfetti kommen vom Rahmen. |
 
 ## Pflichten
@@ -47,4 +51,6 @@ export default {
 7. **Stil:** dunkler Nachthimmel-Hintergrund (#0b1437), Akzente Gold #ffd166, Rot #ef476f, Grün #06d6a0, Eisblau #8ecae6, Violett #c77dff. Winter- und Weihnachts-Anstrich, wo es passt. Grafik per Canvas-Formen (Emoji nur sparsam, sie sehen je Gerät anders aus).
 8. **Eigenständig:** keine Namen, Figuren, Level oder Optik bekannter Marken-Spiele. Kindgerecht: Schneebälle statt Waffen, niemand stirbt, Gegner "purzeln" oder "schmelzen".
 9. **Sauber:** keine globalen Variablen, keine Listener an window ohne `ctx.on`, kein `requestAnimationFrame` außerhalb `ctx.loop`, kein `alert`. Texte auf Deutsch.
-10. **Test:** `node tools/smoke.mjs NN` muss für Desktop und Handy "ok" melden. Screenshots unter `tools/shots/` ansehen.
+10. **Lesbar:** Text im Canvas auf dem Handy nie kleiner als 12 CSS-Pixel (bei 360 Logik-Pixeln Breite also mindestens 12 Logik-Pixel, bei breiterer Logik-Größe entsprechend mehr), wichtige Hinweise ab 14. Nie zwei Hinweistexte übereinander.
+11. **Erste Minute:** Nach "Los geht's!" beginnt sofort das Spiel (keine zweite Hürde beim allerersten Start). Fehler in den ersten Zügen werfen niemanden raus. Jeder Fehlversuch sagt kurz, warum ("Da ist kein Platz").
+12. **Test:** `node tools/smoke.mjs NN` muss für Desktop und Handy "ok" melden. Screenshots unter `tools/shots/` ansehen.

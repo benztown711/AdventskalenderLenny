@@ -10,6 +10,13 @@ const ORDER = [7, 18, 3, 22, 11, 1, 15, 24, 9, 5, 20, 13, 2, 17, 8, 23, 12, 6, 1
 let tickId = null;
 
 const goHome = () => { location.hash = ''; };
+let toastTimer = null;
+function calToast(text) {
+  let t = document.querySelector('.cal-toast');
+  if (!t) { t = document.createElement('div'); t.className = 'cal-toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = text; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
 const fmt = s => {
   const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
   const p = v => String(v).padStart(2, '0');
@@ -31,20 +38,28 @@ function renderCalendar() {
       </header>
       <div class="grid">${ORDER.map(n => {
         const m = DAYS[n - 1], d = store.day(n);
-        const state = n > u ? 'locked' : (d.opened ? 'opened' : 'ready');
-        return `<button class="door ${state}${n === u ? ' today' : ''}" data-n="${n}" style="--i:${n}" aria-label="Türchen ${n}">
+        const state = n > u ? 'locked' : (store.isPlayed(n) ? 'opened' : 'ready');
+        const isToday = n === u && u < 24 || (n === 24 && u === 24 && !store.isPlayed(24));
+        const label = `Türchen ${n}, ${state === 'locked' ? 'noch gesperrt' : state === 'opened' ? `gespielt, ${d.stars || 0} von 3 Sternen` : isToday ? 'heute, neu' : 'neu'}`;
+        return `<button class="door ${state}${isToday ? ' today' : ''}" data-n="${n}" style="--i:${n}" aria-label="${label}"${state === 'locked' ? ' aria-disabled="true"' : ''}>
           <span class="door-num">${n}</span>
           ${state === 'opened' ? `<span class="door-emoji">${m.emoji}</span><span class="door-stars">${'★'.repeat(d.stars || 0)}<i>${'★'.repeat(3 - (d.stars || 0))}</i></span>` : ''}
           ${state === 'locked' ? '<span class="door-lock">🔒</span>' : ''}
-          ${state === 'ready' ? '<span class="door-new">NEU!</span>' : ''}
+          ${state === 'ready' ? `<span class="door-new${isToday ? ' heute' : ''}">${isToday ? 'HEUTE' : 'NEU!'}</span>` : ''}
         </button>`;
       }).join('')}</div>
-      <footer class="cal-foot"><div id="count"></div>${isPreview() ? '<div class="preview">Vorschau-Modus</div>' : ''}</footer>
+      <footer class="cal-foot"><div id="count"></div><div class="foot-note">Jedes Türchen bringt bis zu 3 Sterne. Sie bleiben auf diesem Gerät gespeichert.</div>${isPreview() ? '<div class="preview">Vorschau-Modus</div>' : ''}</footer>
     </div>`;
   const count = view.querySelector('#count');
   const tick = () => {
     const s = secondsToNext();
-    if (s === null) { count.textContent = unlockedDay() >= 24 ? '🎄 Alle Türchen sind offen. Frohe Weihnachten!' : ''; return; }
+    if (s === null) {
+      if (unlockedDay() >= 24) {
+        const t = store.totalStars(), open = ORDER.filter(n => !store.isPlayed(n)).length;
+        count.innerHTML = `🎄 Frohe Weihnachten! Alle 24 Türchen sind offen.<br>Du hast <b>${t}</b> von 72 Sternen` + (t >= 72 ? ' – alle geschafft, du bist Kalender-Champion! 🏆' : open ? `. ${open} Türchen warten noch auf dich.` : '. Schaffst du alle 72?');
+      } else count.textContent = '';
+      return;
+    }
     if (unlockedDay() !== u) { renderCalendar(); return; }
     count.innerHTML = (u === 0 ? 'Das erste Türchen öffnet in ' : 'Nächstes Türchen in ') + `<b>${fmt(s)}</b>`;
   };
@@ -56,7 +71,7 @@ function renderCalendar() {
     if (n > unlockedDay()) {
       audio.sfx('bad'); fx.shake(door);
       const days = n - unlockedDay();
-      count.innerHTML = unlockedDay() === 0 ? '🔒 Geduld! Los geht es am 1. Dezember.' : `🔒 Türchen ${n}: noch <b>${days}</b> mal schlafen!`;
+      calToast(unlockedDay() === 0 ? `🔒 Geduld! Türchen ${n} öffnet am ${n}. Dezember.` : `🔒 Türchen ${n}: noch ${days} mal schlafen!`);
       return;
     }
     audio.sfx(door.classList.contains('ready') ? 'power' : 'click');
@@ -82,7 +97,7 @@ function route() {
   let last = performance.now();
   (function step(t) {
     const dt = Math.min(0.05, (t - last) / 1000); last = t;
-    if (!document.body.classList.contains('in-game') && !document.hidden) {
+    if (!document.body.classList.contains('in-game') && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       g.clearRect(0, 0, cv.width, cv.height); g.fillStyle = 'rgba(255,255,255,.85)';
       for (const f of flakes) {
         f.y += f.v * dt; f.x += Math.sin(t / 1300 + f.p) * 12 * dt;

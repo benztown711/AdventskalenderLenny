@@ -8,10 +8,13 @@ function day(n) { return (state.days[n] = state.days[n] || { opened: false, star
 export const store = {
   day,
   open(n) { day(n).opened = true; persist(); },
+  played(n) { day(n).played = true; persist(); },
+  isPlayed(n) { const d = day(n); return !!(d.played || d.stars || d.best); },
   result(n, stars, score) {
     const d = day(n);
     d.stars = Math.max(d.stars || 0, stars || 0);
     d.best = Math.max(d.best || 0, score || 0);
+    if (stars > 0 || score > 0) d.played = true;
     persist();
   },
   load(n, key, fallback) { const v = day(n).data[key]; return v === undefined ? fallback : v; },

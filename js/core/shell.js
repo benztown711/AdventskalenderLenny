@@ -3,7 +3,7 @@ import { DAYS } from '../days.js';
 import { store } from './store.js';
 import { audio } from './audio.js';
 import { fx } from './fx.js';
-import { createInput } from './input.js';
+import { createInput, isTouch } from './input.js';
 
 let current = null; // { destroy() }
 
@@ -19,7 +19,7 @@ export async function openDay(n, view, goHome) {
         <button class="icon-btn" data-act="home" aria-label="Zurück zum Kalender">←</button>
         <div class="bar-title"><span class="bar-num">${n}</span> ${meta.title}</div>
         <div class="hud"></div>
-        <button class="icon-btn" data-act="pause" aria-label="Pause">⏸</button>
+        <button class="icon-btn" data-act="pause" aria-label="Pause" title="Pause (Esc)">⏸</button>
         <button class="icon-btn" data-act="mute" aria-label="Ton">${audio.muted ? '🔇' : '🔊'}</button>
       </header>
       <main class="stage"></main>
@@ -56,7 +56,14 @@ export async function openDay(n, view, goHome) {
   function start() {
     endSession(); hideOverlay();
     const s = session = { cleanups: [], dead: false, paused: false, loops: [], pauseFns: [] };
-    const on = (target, type, fn, opts) => { target.addEventListener(type, fn, opts); s.cleanups.push(() => target.removeEventListener(type, fn, opts)); };
+    const on = (target, type, fn, opts) => {
+      let h = fn;
+      if (type === 'keydown' || type === 'keypress') h = e => {
+        if (ov.classList.contains('show') || e.key === 'Escape' || e.target?.closest?.('button, a, input, select, textarea')) return;
+        fn(e);
+      };
+      target.addEventListener(type, h, opts); s.cleanups.push(() => target.removeEventListener(type, h, opts));
+    };
     const ctx = {
       day: n, root: stage,
       audio, fx: { ...fx, shake: (ms) => fx.shake(stage, ms) },
@@ -104,13 +111,22 @@ export async function openDay(n, view, goHome) {
       load: (key, fallback) => store.load(n, key, fallback),
       save: (key, value) => store.save(n, key, value),
       best: () => store.day(n).best || 0,
+      // Zwischenstand melden: Sterne und Punkte werden sofort gesichert.
+      // Verlässt das Kind das Spiel über den Zurück-Pfeil, zeigt der Rahmen damit die Ergebnis-Karte.
+      progress({ stars = 0, score = 0, text = '' } = {}) {
+        if (s.dead || s.finished) return;
+        s.progress = { stars, score, text };
+        store.result(n, Math.max(0, Math.min(3, Math.round(stars))), 0);
+      },
       // Spielende melden: { won, stars 0..3, score, text }
       finish({ won = true, stars = 0, score = 0, text = '' } = {}) {
         if (s.dead || s.finished) return; s.finished = true; s.paused = true;
+        if (s.progress) stars = Math.max(stars, s.progress.stars || 0);
         stars = Math.max(0, Math.min(3, Math.round(stars)));
         const before = store.day(n).best || 0;
         store.result(n, stars, score);
         const record = score > before && before > 0;
+        store.played(n);
         if (won || stars > 0) { audio.sfx('win'); fx.confetti(60 + stars * 50); } else audio.sfx('lose');
         const starHtml = `<div class="stars">${[1, 2, 3].map(i => `<span class="${i <= stars ? 'on' : ''}" style="animation-delay:${i * 0.18}s">★</span>`).join('')}</div>`;
         const next = DAYS[n];
@@ -123,6 +139,7 @@ export async function openDay(n, view, goHome) {
         });
       },
     };
+    s.leave = () => ctx.finish({ won: false, ...s.progress, text: s.progress.text || 'Dein Fortschritt ist gesichert. Komm wieder und hol dir noch mehr Sterne!' });
     s.setPaused = p => { if (s.finished || s.paused === p) return; s.paused = p; s.pauseFns.forEach(f => f(p)); };
     try { s.game = (mod.default?.create || mod.create)(ctx) || {}; }
     catch (e) { console.error(e); overlay({ emoji: '🛠️', title: 'Ups!', html: '<p>Dieses Türchen klemmt gerade. Probier es später nochmal.</p>', buttons: [{ label: 'Zum Kalender', onClick: goHome }] }); }
@@ -132,19 +149,25 @@ export async function openDay(n, view, goHome) {
     if (!session || session.finished) return;
     const p = force ?? !session.paused;
     session.setPaused(p);
-    if (p) overlay({ emoji: '⏸', title: 'Pause', buttons: [{ label: '▶ Weiter', onClick: () => { hideOverlay(); session?.setPaused(false); } }, { label: '🔁 Neu starten', onClick: start }, { label: '📅 Zum Kalender', onClick: goHome }] });
+    if (p) overlay({ emoji: '⏸', title: 'Pause', buttons: [{ label: '▶ Weiter', onClick: () => { hideOverlay(); session?.setPaused(false); } }, { label: '🔁 Neu starten', onClick: start }, { label: '📅 Zum Kalender', onClick: () => { if (session?.progress && (session.progress.stars > 0 || session.progress.score > 0)) { session.paused = false; session.leave(); } else goHome(); } }] });
     else hideOverlay();
   }
   const onVis = () => { if (document.hidden && session && !session.paused) togglePause(true); };
   document.addEventListener('visibilitychange', onVis);
+  const onEsc = e => { if (e.key === 'Escape' && session && !session.finished) { e.preventDefault(); togglePause(); } };
+  document.addEventListener('keydown', onEsc);
   view.querySelector('.bar').addEventListener('click', e => {
     const act = e.target.closest('[data-act]')?.dataset.act;
-    if (act === 'home') goHome();
+    if (act === 'home') {
+      if (session && !session.finished && session.progress && (session.progress.stars > 0 || session.progress.score > 0)) session.leave();
+      else goHome();
+    }
+    e.target.closest('button')?.blur();
     if (act === 'pause') togglePause();
     if (act === 'mute') { audio.setMuted(!audio.muted); e.target.closest('button').textContent = audio.muted ? '🔇' : '🔊'; }
   });
 
-  current = { destroy() { alive = false; endSession(); document.removeEventListener('visibilitychange', onVis); } };
+  current = { destroy() { alive = false; endSession(); document.removeEventListener('visibilitychange', onVis); document.removeEventListener('keydown', onEsc); } };
 
   try { mod = await import(`../../days/${String(n).padStart(2, '0')}/game.js`); }
   catch (e) {
@@ -154,9 +177,11 @@ export async function openDay(n, view, goHome) {
   }
   if (!alive) return;
   const d = store.day(n);
+  const touch = isTouch();
+  const how = typeof mod.howto === 'string' ? mod.howto : (mod.howto ? (touch ? mod.howto.touch : mod.howto.keys) || mod.howto.touch || mod.howto.keys : '');
   overlay({
     emoji: meta.emoji, title: meta.title,
-    html: `<p class="howto">${mod.howto || ''}</p>${d.stars ? `<p class="score">Deine Sterne: ${'★'.repeat(d.stars)}${'☆'.repeat(3 - d.stars)}${d.best ? ` · Rekord: <b>${d.best}</b>` : ''}</p>` : ''}`,
+    html: `<p class="howto">${how || ''}</p>${mod.starsInfo ? `<p class="starsinfo"><b>So gibt es Sterne:</b> ${mod.starsInfo}</p>` : ''}${d.stars ? `<p class="score">Deine Sterne: ${'★'.repeat(d.stars)}${'☆'.repeat(3 - d.stars)}${d.best ? ` · Rekord: <b>${d.best}</b>` : ''}</p>` : ''}`,
     buttons: [{ label: "▶ Los geht's!", onClick: start }],
   });
 }

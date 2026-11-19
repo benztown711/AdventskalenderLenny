@@ -27,8 +27,10 @@ function run() {
   requestAnimationFrame(step);
 }
 const COLORS = ['#ffd166', '#ef476f', '#06d6a0', '#8ecae6', '#ffffff', '#f78c6b', '#c77dff'];
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const fx = {
   confetti(n = 140) {
+    if (calm()) n = Math.min(n, 20);
     ensure();
     for (let i = 0; i < n; i++) parts.push({
       x: innerWidth / 2 + (Math.random() - 0.5) * innerWidth * 0.5, y: innerHeight * 0.35,
@@ -48,7 +50,7 @@ export const fx = {
     run();
   },
   shake(el, ms = 300) {
-    if (!el) return;
+    if (!el || calm()) return;
     el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
     setTimeout(() => el.classList.remove('shake'), ms);
   },
