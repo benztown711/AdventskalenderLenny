@@ -35,8 +35,11 @@ export function makeRiddle(day, week, secret) {
       let a, b, c;
       do { a = 2 + rnd(8); b = 2 + rnd(8); c = day - a * b; } while (c < 1 || c > 9);
       terms = [{ e: em[0], v: a, op: '' }, { e: em[1], v: b, op: '×' }, { e: em[2], v: c, op: '+' }];
+    } else if (day === 1) {
+      const a = 2 + rnd(4); // z. B. 4 - 3 = 1, damit kein Bild für 0 steht
+      terms = [{ e: em[0], v: a, op: '' }, { e: em[1], v: a - 1, op: '-' }];
     } else if (day <= 3) {
-      const a = day === 1 ? 1 : 1 + rnd(day - 1);
+      const a = 1 + rnd(day - 1);
       terms = [{ e: em[0], v: a, op: '' }, { e: em[1], v: day - a, op: '+' }];
     } else {
       const c = 1 + rnd(5);
