@@ -176,7 +176,7 @@ const CSS = [
   '.op-karte .spark{opacity:0;transform-box:fill-box;transform-origin:center}',
   '.op-karte .spark.on{animation:op-karte-spark .6s ease-out 1}',
   '@keyframes op-karte-spark{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(2.2)}}',
-  '.op-karte .bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}',
+  '.op-karte .kbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}',
   '.op-karte .balls{display:flex;align-items:center;gap:5px}',
   '.op-karte .ball{width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,hsl(205 60% 82%));box-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .3s,opacity .3s}',
   '.op-karte .ball.used{opacity:.18;transform:scale(.6)}',
@@ -317,7 +317,7 @@ export function mount(root, ctx) {
   root.innerHTML = `<div class="kt${ctx.reduced ? ' red' : ''}">` +
     `<p class="task">Finde das Feld, wo Türchen <b>${day}</b> wartet!</p>` +
     '<div class="clue"><span aria-hidden="true">🗺️</span><span class="cluetext"></span></div>' + svg +
-    '<div class="bar"><div class="balls" role="img"></div><button class="tip" type="button">Tipp</button></div>' +
+    '<div class="kbar"><div class="balls" role="img"></div><button class="tip" type="button">Tipp</button></div>' +
     '<div class="status" role="status" aria-live="polite"></div></div>';
 
   const $ = s => root.querySelector(s), $$ = s => [...root.querySelectorAll(s)];

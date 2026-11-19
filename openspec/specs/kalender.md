@@ -26,3 +26,9 @@
 - Die Start-Karte zeigt die Anleitung passend zum Gerät (Touch oder Tastatur) und eine Zeile "So gibt es Sterne".
 - Ab dem 24. zeigt der Kalender eine Abschluss-Zeile mit dem Sternestand. Hinweis, dass Sterne nur auf diesem Gerät gespeichert sind.
 - Bei "Bewegung reduzieren" entfallen Schnee, Wackeln und der größte Teil des Konfettis.
+
+### Anforderung: Türöffner (siehe `specs/tueroeffner.md`)
+- Neue Türchen müssen erst gefunden werden. Bei jedem Aufruf wird zufällig einer von fünf Türöffnern gewählt
+  (Zugefrorene Türchen, Wichtel-Wirbel, Code-Schloss, Wimmel-Winterdorf, Nebel-Schatzkarte). Der Anspruch steigt im Dezember.
+- Gefundene oder gespielte Türchen öffnen direkt. Wer ohne Tipp findet, bekommt einen Schlüssel 🗝️ (Zähler oben).
+- Die Ergebnis-Karten von Tag 20 bis 23 zeigen den Geheimcode für das Schloss des nächsten Türchens.
