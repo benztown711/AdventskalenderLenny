@@ -33,10 +33,12 @@ export async function openDay(n, view, goHome) {
   function overlay({ emoji = '', title = '', html = '', buttons = [] }) {
     ov.innerHTML = `<div class="card"><div class="card-emoji">${emoji}</div><h2>${title}</h2><div class="card-body">${html}</div><div class="card-btns"></div></div>`;
     const box = ov.querySelector('.card-btns');
+    const shown = performance.now();
     buttons.forEach((b, i) => {
       const el = document.createElement('button');
       el.className = 'btn' + (i === 0 ? ' primary' : ''); el.textContent = b.label;
-      el.onclick = () => { audio.unlock(); audio.sfx('click'); b.onClick(); };
+      // Schutz vor Durchtippen: ein Tipp, der die Karte ausgelöst hat, darf nicht gleich einen Knopf treffen
+      el.onclick = () => { if (performance.now() - shown < 350) return; audio.unlock(); audio.sfx('click'); b.onClick(); };
       box.appendChild(el);
     });
     ov.classList.add('show');

@@ -182,11 +182,13 @@ export default {
         : `Du hast Level ${runBest || 0} als höchstes geschafft${runBest ? '' : ' (noch keins in diesem Spiel)'}. ${nextStarText(runBest)}`;
       ctx.finish({ won: allDone, stars: starsFor(runBest), score, text });
     }
+    // kurz warten: sonst trifft der Tipp-Klick die Ergebnis-Karte
+    const quit = () => { mode = 'trans'; ctx.timeout(() => finishRun(false), 220); };
     // "Fertig für heute": mit Stern direkt abrechnen, sonst erst nachfragen
     function wantDone(from) {
       if (mode !== 'play' && mode !== 'select') return;
       ctx.audio.sfx('click');
-      if (runBest >= 3) { finishRun(false); return; }
+      if (runBest >= 3) { quit(); return; }
       confirmFrom = from; mode = 'confirm'; sel2 = 1;
     }
 
@@ -198,7 +200,7 @@ export default {
       if (finished) return; e.preventDefault();
       const p = pos(e); ctx.input.isTouch || (keyUsed = false);
       if (mode === 'confirm') {
-        if (inRect(p, BTN_YES)) finishRun(false); else if (inRect(p, BTN_NO)) { mode = confirmFrom; ctx.audio.sfx('click'); }
+        if (inRect(p, BTN_YES)) quit(); else if (inRect(p, BTN_NO)) { mode = confirmFrom; ctx.audio.sfx('click'); }
         return;
       }
       if (mode === 'select') {
@@ -237,7 +239,7 @@ export default {
       if (finished) return;
       if (mode === 'confirm') {
         if (name === 'left' || name === 'right') { sel2 = name === 'left' ? 0 : 1; ctx.audio.sfx('tick'); }
-        else if (name === 'a') { if (sel2 === 0) finishRun(false); else { mode = confirmFrom; ctx.audio.sfx('click'); } }
+        else if (name === 'a') { if (sel2 === 0) quit(); else { mode = confirmFrom; ctx.audio.sfx('click'); } }
         return;
       }
       if (mode === 'select') {
