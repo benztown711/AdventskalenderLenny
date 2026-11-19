@@ -148,7 +148,7 @@ export default {
     function tryEnd() {
       if (state !== 'play') return;
       ctx.audio.sfx('click');
-      if (starsFor(done) > 0) finish(false);
+      if (starsFor(done) > 0) { state = 'end'; ctx.timeout(() => finish(false), 220); } // kurz warten: sonst trifft der Tipp-Klick die Ergebnis-Karte
       else { state = 'ask'; drag = -1; sel = -1; askSel = 1; }
     }
 
@@ -157,7 +157,7 @@ export default {
       e.preventDefault(); ctx.audio.unlock?.();
       const p = pos(e);
       if (state === 'ask') {
-        if (inBox(BTN_YES, p)) finish(false); else if (inBox(BTN_NO, p)) { state = 'play'; ctx.audio.sfx('click'); }
+        if (inBox(BTN_YES, p)) { state = 'end'; ctx.timeout(() => finish(false), 220); } else if (inBox(BTN_NO, p)) { state = 'play'; ctx.audio.sfx('click'); }
         return;
       }
       if (state !== 'play') return;
@@ -204,7 +204,7 @@ export default {
       const k = e.key;
       if (state === 'ask') {
         if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); askSel = k === 'ArrowLeft' ? 0 : 1; ctx.audio.sfx('tick'); }
-        else if (k === 'Enter' || k === ' ') { e.preventDefault(); if (askSel === 0) finish(false); else { state = 'play'; ctx.audio.sfx('click'); } }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); if (askSel === 0) { state = 'end'; ctx.timeout(() => finish(false), 220); } else { state = 'play'; ctx.audio.sfx('click'); } }
         return;
       }
       if (state !== 'play') return;
