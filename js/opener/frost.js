@@ -480,7 +480,7 @@ export function mount(root, ctx) {
     ctx.on(window, 'resize', fit);
   }
   fit();
-  say(`Wisch mit dem Finger über den Frost. Such Türchen ${day}!`);
+  say(ctx.isTouch ? "Wisch mit dem Finger über das Eis. Tippe dann auf das Türchen." : "Wisch mit gedrückter Maus über das Eis. Klicke dann auf das Türchen.");
   heatBtn.textContent = `🔥 Handwärmer (${HEAT_WAIT} s)`;
 
   return {
