@@ -32,7 +32,7 @@ export default {
     let size = SIZES[0], N = 4, BR = 2, BC = 2, L = null, cell = 80, gx = 0, gy = 0;
     let puzzle = [], sol = [], cells = [], locked = [], hinted = [], notes = [], wig = [];
     let sel = 0, noteMode = false, errors = 0, tips = 0, secs = 0, shownSecs = -1, done = false, warned = false;
-    let flashes = [], sparks = [], press = {}, confirmMenu = 0, conflict = null;
+    let flashes = [], sparks = [], press = {}, confirmMenu = 0, conflict = null, note = null;
     const flakes = Array.from({ length: 30 }, (_, i) => ({ x: (i * 97) % W, y: (i * 53) % H, v: 8 + (i % 5) * 4, r: 1 + (i % 3) * 0.6 }));
 
     ctx.input.pad({}); // keine Touch-Buttons nötig: alles per Tippen
@@ -69,7 +69,7 @@ export default {
       locked = puzzle.map(v => v > 0); hinted = puzzle.map(() => false);
       notes = puzzle.map(() => 0); wig = puzzle.map(() => 0);
       errors = 0; tips = 0; secs = 0; time = 0; shownSecs = -1; done = false; warned = false; noteMode = false;
-      flashes = []; sparks = []; confirmMenu = 0; conflict = null;
+      flashes = []; sparks = []; confirmMenu = 0; conflict = null; note = null;
       sel = cells.findIndex((v, i) => !v && !locked[i]); if (sel < 0) sel = 0;
       mode = 'play'; hud();
       ctx.audio.sfx('swoosh');
@@ -125,8 +125,8 @@ export default {
         const w = rowOf(j) === rowOf(i) ? 'in dieser Zeile' : colOf(j) === colOf(i) ? 'in dieser Spalte' : 'in diesem Kasten';
         if (other < 0 || (w === 'in dieser Zeile' && where !== w)) { other = j; where = w; }
       }
-      if (other >= 0) { conflict = { i: other, t: 1.8 }; ctx.toast(`Die ${d} steht schon ${where}`, 2200); }
-      else ctx.toast('Passt hier leider nicht, schau nochmal auf Zeile und Spalte', 2600);
+      if (other >= 0) { conflict = { i: other, t: 2.4 }; note = { text: `Die ${d} steht schon ${where}`, cells: [i, other], t: 2.6 }; }
+      else note = { text: 'Passt hier leider nicht, schau nochmal auf Zeile und Spalte', cells: [i], t: 2.6 };
     }
 
     function clearCell() {
@@ -198,7 +198,7 @@ export default {
       return ['note', 'hint', 'clear', 'menu'].map((key, i) => ({ key, x: m + i * (bw + gap), y: TOOL_Y, w: bw, h: TOOL_H }));
     }
     function barLayout() {
-      const m = N === 9 ? 4 : 8, gap = N === 9 ? 2 : 6, bw = (W - 2 * m - (N - 1) * gap) / N;
+      const m = N === 9 ? 2 : 8, gap = N === 9 ? 1 : 6, bw = (W - 2 * m - (N - 1) * gap) / N;
       return Array.from({ length: N }, (_, i) => ({ d: i + 1, x: m + i * (bw + gap), y: BAR_Y, w: bw, h: BAR_H }));
     }
 
@@ -283,6 +283,25 @@ export default {
       }
     }
 
+    // Erklärung WARUM eine Zahl nicht passt: Band über dem Brett, so verschoben, dass es die beteiligten Felder nicht verdeckt
+    function drawNote() {
+      g.font = `700 14px ${FONT}`;
+      const words = note.text.split(' '), lines = []; let line = '';
+      for (const w of words) { const t = line ? line + ' ' + w : w; if (g.measureText(t).width > W - 56 && line) { lines.push(line); line = w; } else line = t; }
+      lines.push(line);
+      const bh = 14 + lines.length * 19, bw = Math.min(W - 16, Math.max(...lines.map(l => g.measureText(l).width)) + 28), gs = N * cell;
+      let by = gy;
+      for (let y = gy; y + bh <= gy + gs; y += 6) {
+        by = y;
+        if (note.cells.every(c => cy(c) + cell <= y - 2 || cy(c) >= y + bh + 2)) break;
+      }
+      const a = Math.min(1, note.t * 3);
+      g.globalAlpha = a; g.fillStyle = 'rgba(8,14,42,.92)'; rr((W - bw) / 2, by, bw, bh, 12); g.fill();
+      g.strokeStyle = RED; g.lineWidth = 2; g.stroke();
+      lines.forEach((l, k) => txt(l, W / 2, by + 7 + 9.5 + k * 19, 14, '#fff3c4', 700));
+      g.globalAlpha = 1;
+    }
+
     function drawMenu() {
       txt('Sudoku-Werkstatt', W / 2, 42, 30, GOLD, 800);
       txt('Jede Zahl genau einmal pro Zeile,', W / 2, 78, 14, '#c9d3f5', 500);
@@ -356,6 +375,7 @@ export default {
         }
       });
 
+      if (note) drawNote();
       if (conflict) {
         const a = 0.5 + 0.5 * Math.sin(time * 14), x = cx(conflict.i), y = cy(conflict.i);
         g.fillStyle = `rgba(255,255,255,${0.15 + a * 0.2})`; g.fillRect(x, y, cell, cell);
@@ -375,7 +395,8 @@ export default {
           const mx = b.x + b.w / 2, my = b.y + b.h / 2 - 2; g.moveTo(mx - 9, my); g.lineTo(mx - 2, my + 8); g.lineTo(mx + 11, my - 9); g.stroke();
         } else {
           txt(String(d), b.x + b.w / 2, b.y + b.h / 2 - 5, b.w > 46 ? 30 : 26, noteMode ? '#d6e2ff' : '#fff3c4', 800);
-          txt(`noch ${left}`, b.x + b.w / 2, b.y + b.h - 10, 12, '#c9a96c', 600);
+          g.font = `600 12px ${FONT}`;
+          txt(g.measureText(`noch ${left}`).width < b.w - 4 ? `noch ${left}` : `${left} frei`, b.x + b.w / 2, b.y + b.h - 10, 12, '#c9a96c', 600);
         }
         g.restore();
       }
@@ -419,6 +440,7 @@ export default {
       }
       if (confirmMenu > 0) confirmMenu -= dt;
       if (conflict && (conflict.t -= dt) <= 0) conflict = null;
+      if (note && (note.t -= dt) <= 0) note = null;
       for (const k in press) if (press[k] > 0) press[k] -= dt;
       for (let i = 0; i < wig.length; i++) if (wig[i] > 0) wig[i] -= dt;
       for (const f of flashes) f.t += dt;
