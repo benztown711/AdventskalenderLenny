@@ -1,5 +1,9 @@
 // Türchen 15: Kopfball-Duell (1-gegen-1-Fußball von der Seite, Turnier mit 3 Spielen)
-export const howto = 'Pfeile (oder A/D) laufen, Pfeil hoch oder Leertaste springen, X schießt. Am Handy: die Knöpfe unter dem Feld. Schlage Schneemann, Pinguin und Yeti, dann gehört der Pokal dir!';
+export const howto = {
+  touch: 'Laufe mit den Pfeil-Knöpfen, springe mit „Sprung“ und schieße mit „Schuss“. Schlage Schneemann, Pinguin und Yeti, dann gehört der Pokal dir!',
+  keys: 'Laufe mit Pfeiltasten oder A/D, springe mit Pfeil hoch oder Leertaste, schieße mit X. Schlage Schneemann, Pinguin und Yeti, dann gehört der Pokal dir!',
+};
+export const starsInfo = '★ Viertelfinale gewonnen · ★★ auch das Halbfinale · ★★★ auch das Finale';
 
 const W = 560, H = 340, GY = 292, GW = 42, SH = 10, GB = 820, GP = 1750;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -17,7 +21,11 @@ const ROUND_SHORT = ['VF', 'HF', 'F'];
 
 export default {
   create(ctx) {
-    const { g } = ctx.makeCanvas(W, H);
+    // Hochformat (Handy): Anzeigebereich über dem Spielfeld (OY), das Spielfeld selbst bleibt 560x340.
+    const r0 = ctx.root.getBoundingClientRect();
+    const portrait = r0.width > 0 ? r0.height > r0.width * 0.85 : innerHeight > innerWidth;
+    const OY = portrait ? 200 : 0;
+    const { g } = ctx.makeCanvas(W, H + OY);
     const au = ctx.audio;
     const R = Math.random;
 
@@ -250,6 +258,7 @@ export default {
     function advance() {
       if (m.sp > m.sa) {
         wins++; hudSet();
+        ctx.progress({ stars: wins, score: totalGoals, text: `${wins} ${wins === 1 ? 'Spiel' : 'Spiele'} gewonnen. Dein Fortschritt ist gesichert!` });
         if (round === 2) return finishAll(true);
         round++; startMatch();
       } else finishAll(false);
@@ -390,7 +399,7 @@ export default {
 
     // ---------- Zeichnen ----------
     const circ = (x, y, r, f, s, lw = 2) => { g.beginPath(); g.arc(x, y, r, 0, TAU); if (f) { g.fillStyle = f; g.fill(); } if (s) { g.strokeStyle = s; g.lineWidth = lw; g.stroke(); } };
-    const ell = (x, y, rx, ry, f, rot = 0) => { g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, TAU); g.fillStyle = f; g.fill(); };
+    const ell = (x, y, rx, ry, f, rot = 0) => { g.beginPath(); g.ellipse(x, y, Math.max(0.01, rx), Math.max(0.01, ry), rot, 0, TAU); g.fillStyle = f; g.fill(); };
     const text = (s, x, y, size, color, align = 'center', weight = 'bold') => {
       g.font = `${weight} ${size}px system-ui, "Segoe UI", sans-serif`; g.textAlign = align; g.textBaseline = 'middle';
       g.lineWidth = Math.max(3, size / 6); g.strokeStyle = 'rgba(5,10,35,.85)'; g.lineJoin = 'round'; g.strokeText(s, x, y);
@@ -508,6 +517,8 @@ export default {
     }
 
     function drawBall() {
+      // ball.r bleibt durch clamp() in stepBall im Bereich 12..26; die Untergrenze schützt nur zusätzlich vor negativen Radien
+      // (Ursache früher: negatives dt im ersten Frame, im Rahmen behoben, update() klemmt dt auf >= 0).
       const r = Math.max(1, ball.r);
       const hgt = Math.max(0, GY - ball.y - r);
       ell(ball.x, GY + 2, r * 0.9 * Math.max(0.4, 1 - hgt / 280), 4.5, `rgba(10,20,50,${Math.max(0.1, 0.32 - hgt / 600)})`);
@@ -591,46 +602,67 @@ export default {
         g.globalAlpha = Math.min(1, m.showMe);
         const y = P.y - 128 + Math.sin(time * 6) * 3;
         g.beginPath(); g.moveTo(P.x - 8, y - 8); g.lineTo(P.x + 8, y - 8); g.lineTo(P.x, y + 2); g.closePath(); g.fillStyle = '#ffd166'; g.fill();
-        text('DU', P.x, y - 18, 14, '#ffd166'); g.globalAlpha = 1;
+        text('DU', P.x, y - 18, 18, '#ffd166'); g.globalAlpha = 1;
       }
     }
 
+    function drawHeader() {
+      // Hochformat: großer Anzeigebereich über dem Spielfeld
+      g.fillStyle = '#070e2b'; g.fillRect(0, 0, W, OY);
+      g.fillStyle = 'rgba(8,14,45,.9)'; g.strokeStyle = '#ffd166'; g.lineWidth = 3;
+      g.beginPath(); g.roundRect(14, 12, W - 28, OY - 24, 18); g.fill(); g.stroke();
+      text(ROUNDS[round].toUpperCase(), 280, 44, 26, '#ffd166');
+      text('DU', 92, 114, 36, '#ef476f');
+      text(`${m.sp} : ${m.sa}`, 280, 114, 84, '#fff');
+      text(opp.name.toUpperCase(), 468, 114, opp.name.length > 7 ? 26 : 32, '#8ecae6');
+      const secs = Math.ceil(m.clock), clockTxt = m.golden ? 'GOLDEN GOAL' : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+      const low = !m.golden && secs <= 10, pulse = m.golden ? 1 + Math.sin(time * 8) * 0.06 : 1;
+      text(clockTxt, 280, 170, (m.golden ? 30 : 40) * pulse, m.golden ? '#ffd166' : low && Math.sin(time * 10) > 0 ? '#ef476f' : '#fff');
+    }
+
     function drawHud() {
+      g.save(); g.translate(0, OY);
       // Schnee im Vordergrund
       g.fillStyle = 'rgba(255,255,255,.8)';
       for (const f of flakes) { g.beginPath(); g.arc(f.x, f.y, f.s, 0, TAU); g.fill(); }
-      // Anzeigetafel
-      g.fillStyle = 'rgba(8,14,45,.85)'; g.strokeStyle = '#ffd166'; g.lineWidth = 2;
-      g.beginPath(); g.roundRect(130, 6, 300, 38, 12); g.fill(); g.stroke();
-      text('DU', 160, 25, 16, '#ef476f');
-      text(`${m.sp} : ${m.sa}`, 280, 25, 28, '#fff');
-      text(opp.name.toUpperCase(), 372, 25, opp.name.length > 7 ? 12 : 14, '#8ecae6');
-      const secs = Math.ceil(m.clock), clockTxt = m.golden ? 'GOLDEN GOAL' : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
-      const low = !m.golden && secs <= 10, pulse = m.golden ? 1 + Math.sin(time * 8) * 0.06 : 1;
-      text(clockTxt, 280, 58, (m.golden ? 15 : 18) * pulse, m.golden ? '#ffd166' : low && Math.sin(time * 10) > 0 ? '#ef476f' : '#fff');
+      let y = portrait ? 24 : 78;
+      if (!portrait) {
+        // Anzeigetafel (Querformat)
+        g.fillStyle = 'rgba(8,14,45,.85)'; g.strokeStyle = '#ffd166'; g.lineWidth = 2;
+        g.beginPath(); g.roundRect(130, 6, 300, 38, 12); g.fill(); g.stroke();
+        text('DU', 160, 25, 16, '#ef476f');
+        text(`${m.sp} : ${m.sa}`, 280, 25, 28, '#fff');
+        text(opp.name.toUpperCase(), 372, 25, opp.name.length > 7 ? 12 : 14, '#8ecae6');
+        const secs = Math.ceil(m.clock), clockTxt = m.golden ? 'GOLDEN GOAL' : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+        const low = !m.golden && secs <= 10, pulse = m.golden ? 1 + Math.sin(time * 8) * 0.06 : 1;
+        text(clockTxt, 280, 58, (m.golden ? 15 : 18) * pulse, m.golden ? '#ffd166' : low && Math.sin(time * 10) > 0 ? '#ef476f' : '#fff');
+      }
       // aktive Extras
-      let y = 78;
-      const chip = (label, v, c) => { text(`${label} ${Math.ceil(v)}`, 280, y, 12, c); y += 15; };
+      const fs = portrait ? 19 : 12, st = portrait ? 22 : 15;
+      const chip = (label, v, c) => { text(`${label} ${Math.ceil(v)}`, 280, y, fs, c); y += st; };
       if (eff.big > 0) chip('Riesenball', eff.big, '#ffd166');
       if (eff.ice > 0) chip('Eis-Boden', eff.ice, '#8ecae6');
       if (gs[0].t > 0) chip(gs[0].target < 100 ? 'Dein Tor klein' : 'Dein Tor groß', gs[0].t, gs[0].target < 100 ? '#06d6a0' : '#ef476f');
       if (gs[1].t > 0) chip(gs[1].target < 100 ? 'Gegner-Tor klein' : 'Gegner-Tor groß', gs[1].t, gs[1].target < 100 ? '#ef476f' : '#06d6a0');
       // Zentrale Texte
       if (m.phase === 'intro' && m.cd) {
-        text(ROUNDS[round].toUpperCase(), 280, 118, 26, '#ffd166'); text(`gegen ${opp.name}`, 280, 144, 18, '#fff');
+        text(ROUNDS[round].toUpperCase(), 280, 118, 26, '#ffd166'); text(`gegen ${opp.name}`, 280, 146, 20, '#fff');
         const c = Math.ceil(m.t), k = 1 - (m.t - Math.floor(m.t));
         if (c >= 1 && c <= 3) text(String(c), 280, 200, 64 + (1 - k) * 22, '#fff');
       } else if (m.banner) {
         const b = m.banner, k = clamp((b.max - b.t) / 0.18, 0, 1), s = 0.6 + 0.4 * (1 - Math.pow(1 - k, 3));
         g.globalAlpha = Math.min(1, b.t / 0.3);
         const big = b.text === 'TOOOR!';
-        text(b.text, 280, big ? 140 : 130, (big ? 54 : 24) * s * (big ? 1 + Math.sin(time * 14) * 0.05 : 1), b.color);
+        text(b.text, 280, big ? 140 : 130, (big ? 54 : 26) * s * (big ? 1 + Math.sin(time * 14) * 0.05 : 1), b.color);
         g.globalAlpha = 1;
       }
+      g.restore();
+      if (portrait) drawHeader();
     }
 
     function draw() {
       g.save();
+      g.translate(0, OY); g.beginPath(); g.rect(0, 0, W, H); g.clip();
       let z = 1, fx = W / 2, fy = H / 2;
       if (zoomT > 0 && m.phase === 'goal') {
         const e = Math.min(1, (2.3 - zoomT) / 0.5, zoomT / 0.5); z = 1 + 0.15 * clamp(e, 0, 1);
@@ -685,8 +717,8 @@ function drawBackground(g) {
   const cols = ['#ef476f', '#118ab2', '#ffd166', '#06d6a0'];
   for (let i = 0; i < 8; i++) {
     g.fillStyle = cols[i % 4]; g.fillRect(i * 70, 232, 70, 30);
-    g.fillStyle = i % 4 === 2 ? '#0b1437' : '#fff'; g.font = 'bold 13px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('ADVENT-CUP', i * 70 + 35, 247);
+    g.fillStyle = i % 4 === 2 ? '#0b1437' : '#fff'; g.font = 'bold 19px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('CUP', i * 70 + 35, 248);
   }
   g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 258, W, 4);
   // Spielfeld mit Schnee

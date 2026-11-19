@@ -1,7 +1,11 @@
 // Türchen 6: Schlittenflug (Nikolaustag). Logik in sim.js, Zeichnen und Effekte hier.
 import { W, H, SX, createWorld, step, throwGift } from './sim.js';
 
-export const howto = 'Halte die Leertaste (oder die linke Bildschirmhälfte / Knopf „Hoch“), um zu steigen, loslassen = sinken. Taste X, ↓ oder rechte Bildschirmhälfte / Knopf „Geschenk“ wirft ein Geschenk: triff die leuchtenden Schornsteine! Weiche Wolken, Blitzen, Vögeln und Kirchtürmen aus.';
+export const howto = {
+  touch: 'Halte die linke Bildschirmhälfte zum Steigen, loslassen = sinken. Tippe rechts, um ein Geschenk in leuchtende Schornsteine zu werfen.',
+  keys: 'Halte die Leertaste zum Steigen, loslassen = sinken. Taste X wirft ein Geschenk in leuchtende Schornsteine.',
+};
+export const starsInfo = '★ ab 350 Punkten · ★★ ab 1500 · ★★★ ab 4000';
 
 // Sterne-Grenzen (Punkte)
 const GY = 534;
@@ -25,7 +29,7 @@ export default {
     const w = createWorld();
     const cur = { top: [...SCH[0].top], bot: [...SCH[0].bot], m1: [...SCH[0].m1], m2: [...SCH[0].m2], roof: [...SCH[0].roof], wall: [...SCH[0].wall], aur: 0 };
     let parts = [], floats = [], flash = 0, redFlash = 0, time = 0, scroll = 0, shake = 0;
-    let starChain = 0, starChainT = 0, comboPop = 0, bellT = 0, finished = false, pointerHold = 0, lastHud = '', trailT = 0;
+    let progStars = 0, starChain = 0, starChainT = 0, comboPop = 0, bellT = 0, finished = false, pointerHold = 0, lastHud = '', trailT = 0;
     const flakes = Array.from({ length: 46 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: 0.6 + Math.random() * 1.6, p: Math.random() * 6 }));
     const sky = Array.from({ length: 80 }, () => ({ x: Math.random() * W, y: Math.random() * 330, s: 0.6 + Math.random() * 1.4, p: Math.random() * 6 }));
     let shoot = null;
@@ -43,7 +47,7 @@ export default {
     const ids = new Set();
     const gift = () => { if (!finished && !ctx.paused) throwGift(w); };
     ctx.input.onPress(n => { if (n === 'b' || n === 'down') gift(); });
-    ctx.input.pad({ a: 'Hoch', b: 'Geschenk' });
+    // Kein Pad: links halten = steigen, rechts tippen = Geschenk (so wie es die Hinweise sagen)
     ctx.on(canvas, 'pointerdown', e => {
       const p = pos(e);
       if (p.x >= W / 2) gift(); else { ids.add(e.pointerId); pointerHold = ids.size; }
@@ -73,7 +77,7 @@ export default {
           break;
         case 'ginger':
           A.sfx('power'); hearts(ev.x, ev.y, 10); spark(ev.x, ev.y, '#f4a261', 14, 150, 0.7);
-          ctx.toast('Lebkuchen! +1 Herz', 1200); text(ev.x, ev.y - 20, '+1 ♥', '#ef476f', 1.4);
+          text(ev.x, ev.y - 20, 'Lebkuchen! +1 ♥', '#ef476f', 1.1);
           break;
         case 'throw': A.sfx('swoosh'); break;
         case 'chimney': {
@@ -85,7 +89,7 @@ export default {
           [0, 2, 4].forEach((o, i) => A.tone(A.midi(67 + pent[(k + i) % 5] + 12 * Math.floor((k + i) / 5)), 0.2, 'triangle', 0.2, null, i * 0.06));
           A.tone(A.midi(91), 0.25, 'sine', 0.08, null, 0.2);
           comboPop = 1; if (ev.combo >= 2) ctx.fx.shake(120);
-          if (ev.combo % 5 === 0) { ctx.fx.confetti(40); ctx.toast(`Combo x${ev.combo}!`, 1000); A.sfx('level'); }
+          if (ev.combo % 5 === 0) { ctx.fx.confetti(40); A.sfx('level'); }
           break;
         }
         case 'miss': spark(ev.x, ev.y, '#ffffff', 8, 80, 0.4, 3, 120); A.tone(150, 0.1, 'sine', 0.12, 80); break;
@@ -103,7 +107,6 @@ export default {
           break;
         case 'section':
           if (ev.i > 0) { ctx.toast(ev.name, 2200); A.sfx('level'); ctx.fx.confetti(25); }
-          else ctx.toast(ev.name, 2000);
           break;
       }
     }
@@ -112,12 +115,12 @@ export default {
       if (finished) return; finished = true;
       const sc = Math.floor(w.score);
       const stars = sc >= STAR3 ? 3 : sc >= STAR2 ? 2 : sc >= STAR1 ? 1 : 0;
-      const need = stars === 3 ? '' : stars === 2 ? ` Noch ${STAR3 - sc} Punkte bis zum dritten Stern: sammle mehr Sterne und triff Schornsteine hintereinander!`
+      const need = stars === 3 ? '' : stars === 2 ? ` Noch ${STAR3 - sc} Punkte bis zum dritten Stern: sammle mehr Glitzer und triff Schornsteine hintereinander!`
         : stars === 1 ? ` Noch ${STAR2 - sc} Punkte bis zum zweiten Stern: Schornstein-Combos geben viele Punkte!`
-          : ` Ab ${STAR1} Punkten gibt es den ersten Stern: sammle Sterne und wirf Geschenke in Schornsteine.`;
+          : ` Ab ${STAR1} Punkten gibt es den ersten Stern: sammle Glitzer und wirf Geschenke in Schornsteine.`;
       ctx.finish({
         won: stars >= 1, stars, score: sc,
-        text: `${Math.round(w.t)} Sekunden geflogen, ${w.starsGot} Sterne gesammelt, beste Combo x${w.bestCombo}.${stars === 3 ? ' Du bist der beste Schlittenpilot!' : need}`,
+        text: `${Math.round(w.t)} Sekunden geflogen, ${w.starsGot} Glitzer gesammelt, beste Combo x${w.bestCombo}.${stars === 3 ? ' Du bist der beste Schlittenpilot!' : need}`,
       });
     }
 
@@ -355,11 +358,22 @@ export default {
         g.font = 'bold 22px sans-serif'; g.lineWidth = 4; g.strokeStyle = 'rgba(11,20,55,.85)'; g.fillStyle = '#ffd166';
         g.strokeText(`Combo x${w.combo}`, 0, 0); g.fillText(`Combo x${w.combo}`, 0, 0); g.restore();
       }
-      if (w.t < 6) {
-        g.globalAlpha = Math.min(1, (6 - w.t)); g.fillStyle = 'rgba(11,20,55,.7)'; g.beginPath(); g.roundRect(24, 96, W - 48, 50, 12); g.fill();
-        g.fillStyle = '#fff'; g.font = 'bold 14px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText(ctx.input.isTouch ? 'Halten = steigen · „Geschenk“ = werfen' : 'Leertaste halten = steigen', W / 2, 112);
-        g.fillText(ctx.input.isTouch ? 'Triff die leuchtenden Schornsteine!' : 'X oder ↓ = Geschenk werfen', W / 2, 132);
+      // Hinweise nacheinander, immer nur einer
+      const T = ctx.input.isTouch;
+      const hints = [T ? 'Linke Hälfte halten: steigen' : 'Leertaste halten: steigen', T ? 'Rechts tippen: Geschenk werfen' : 'Taste X: Geschenk werfen', 'Triff die leuchtenden Schornsteine!'];
+      const hi = Math.floor(w.t / 2.6);
+      if (hi < hints.length) {
+        const ph = w.t - hi * 2.6;
+        g.globalAlpha = Math.min(1, ph * 4, (2.6 - ph) * 4); g.font = 'bold 17px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        const tw = g.measureText(hints[hi]).width + 28;
+        g.fillStyle = 'rgba(11,20,55,.75)'; g.beginPath(); g.roundRect(W / 2 - tw / 2, 96, tw, 36, 12); g.fill();
+        g.fillStyle = '#fff'; g.fillText(hints[hi], W / 2, 115);
+        g.globalAlpha = 1;
+      }
+      if (T && !w.dead) { // Beschriftung der Bildschirmhälften
+        g.globalAlpha = 0.6; g.font = 'bold 14px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#0b1437';
+        g.fillText('◀ halten: HOCH', W * 0.25, GY + 14); g.fillText('tippen: GESCHENK ▶', W * 0.75, GY + 14);
+        g.strokeStyle = 'rgba(11,20,55,.35)'; g.lineWidth = 2; g.setLineDash([4, 6]); g.beginPath(); g.moveTo(W / 2, GY + 2); g.lineTo(W / 2, H - 6); g.stroke(); g.setLineDash([]);
         g.globalAlpha = 1;
       }
     }
@@ -423,6 +437,8 @@ export default {
       for (const f of flakes) { f.x -= (w.speed * 0.5 + f.s * 20) * dt; f.y += (30 + f.s * 24) * dt; f.x += Math.sin(time + f.p) * 0.3; if (f.y > H) { f.y = -4; f.x = Math.random() * W + 40; } if (f.x < -4) f.x = W + 4; }
       // Hud
       const sc = Math.floor(w.score), hs = `${sc}|${w.combo}`;
+      const stNow = sc >= STAR3 ? 3 : sc >= STAR2 ? 2 : sc >= STAR1 ? 1 : 0;
+      if (stNow > progStars && !finished) { progStars = stNow; ctx.progress({ stars: stNow, score: sc, text: `Schon ${sc} Punkte geflogen. Dein Fortschritt ist gesichert!` }); }
       if (hs !== lastHud) { lastHud = hs; ctx.hud.set({ Punkte: sc, Combo: w.combo >= 2 ? 'x' + w.combo : '-', Rekord: Math.max(ctx.best(), sc) }); }
       g.save();
       if (shake > 0) { shake -= dt; g.translate((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7); }

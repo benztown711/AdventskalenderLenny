@@ -117,7 +117,7 @@ export function drawHarbor(g, map, t, glow) {
   g.lineWidth = glow ? 4 : 2; g.setLineDash([10, 8]); g.lineDashOffset = -t * 20;
   g.beginPath(); g.arc(h.x, h.y, h.r, 0, TAU); g.stroke(); g.setLineDash([]); g.restore();
   if (glow) {
-    g.font = 'bold 13px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = 'bold 14px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.lineWidth = 3; g.strokeStyle = '#0b1437'; g.strokeText('HAFEN', h.x, h.y); g.fillStyle = C.gold; g.fillText('HAFEN', h.x, h.y);
   }
   // Bojen

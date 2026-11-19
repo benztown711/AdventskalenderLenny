@@ -100,3 +100,26 @@ export function generate(c, r, crabsN, chestsN, start, budgetMs = 180) {
   free.slice(0, chestsN).forEach((i, k) => { chest[i] = k === 0 ? 2 : 1; }); // 2 = mit Fernrohr
   return { crab: best.crab, n: best.n, chest, nb, stuck: bestStuck, tries };
 }
+
+// Sichere Schlüsse für Hinweise: Welches verdeckte Feld ist (allein aus den offenen Zahlen) sicher oder sicher eine Krabbe?
+// known[i] = 1: Krabbe schon sicher bekannt (aufgedeckt oder per Fernrohr). Gibt { cell, kind: 'safe' | 'crab', clue } oder null.
+export function findSure(nb, nums, crab, rev, known) {
+  const N = nums.length, cons = [];
+  for (let i = 0; i < N; i++) {
+    if (!rev[i] || crab[i] || !nums[i]) continue;
+    const U = []; let m = 0;
+    for (const j of nb[i]) { if (known[j]) m++; else if (!rev[j]) U.push(j); }
+    if (!U.length) continue;
+    const rem = nums[i] - m;
+    if (rem === 0) return { cell: U[0], kind: 'safe', clue: i };
+    if (rem === U.length) return { cell: U[0], kind: 'crab', clue: i };
+    cons.push({ i, U, rem });
+  }
+  for (const a of cons) for (const b of cons) {
+    if (a === b || a.U.length >= b.U.length || !a.U.every(x => b.U.includes(x))) continue;
+    const diff = b.U.filter(x => !a.U.includes(x)), rd = b.rem - a.rem;
+    if (rd === 0) return { cell: diff[0], kind: 'safe', clue: b.i };
+    if (rd === diff.length) return { cell: diff[0], kind: 'crab', clue: b.i };
+  }
+  return null;
+}

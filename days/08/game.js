@@ -5,7 +5,11 @@ import {
   drawDigger, drawTentacle, drawKrakenHead, drawCoin, drawPickup, drawIceBorder,
 } from './art.js';
 
-export const howto = 'Segle zu den drei Schatzinseln (folge dem goldenen Pfeil), buddle die Truhen aus und bring sie heim in den Hafen! Steuern: Pfeiltasten (hoch = Segel setzen, runter = bremsen), Leertaste = Schneeball-Breitseite. Am Handy: Stick und Feuer-Knopf.';
+export const howto = {
+  touch: 'Zieh den Stick oder tippe und ziehe direkt ins Wasser, dann segelt das Schiff dorthin. Der Feuer-Knopf schießt Schneebälle.',
+  keys: 'Segle mit den Pfeiltasten, hoch = schneller. Die Leertaste schießt Schneebälle.',
+};
+export const starsInfo = '★ 1 Schatz gehoben · ★★ 2 Schätze · ★★★ alle 3 Truhen';
 
 const VW = 360, VH = 560;
 const MAXSPD = 128, CRUISE = 52, HP = 5;
@@ -27,13 +31,15 @@ const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 
 export default {
   create(ctx) {
-    const { canvas, g } = ctx.makeCanvas(VW, VH);
+    const { canvas, g, pos } = ctx.makeCanvas(VW, VH);
+    const touch = ctx.input.isTouch;
     const map = generate();
     const { harbor, T, arena } = map;
     const ship = { x: harbor.x, y: harbor.y - 6, ang: -Math.PI / 2, spd: 0, turn: 0, kx: 0, ky: 0, hp: HP, inv: 0, sink: 0, cool: 0, bump: 0 };
     const cam = { x: ship.x - VW / 2, y: WH - VH };
     let time = 0, coins = 0, raised = 0, delivered = 0, leg = 0, over = false, grace = 3;
     let dig = null, heartPulse = 0, banner = null, deliverFx = 0;
+    let ptr = null, course = null, moved = false, startHint = { t: 0 };
     let rivals = [], balls = [], pickups = [], parts = [], wake = [], winds = [], floats = [];
     let windAng = rnd(0, TAU), wakeT = 0, spawnT = 0, windT = 0, flashT = 0;
     const kraken = { hp: 7, max: 7, active: false, met: false, beaten: false, tents: [], spawnT: 1.2, head: null, shadowA: 0 };
@@ -67,7 +73,7 @@ export default {
       if (leg >= 6) return 'Alle Schätze daheim! Arrr!';
       if (leg % 2) return leg === 5 ? 'Letzte Fahrt: ab in den Hafen!' : 'Bring die Truhe zum Hafen!';
       if (leg === 4) return kraken.active ? 'Triff die Tentakel mit Feuer!' : 'Schatzinsel 3 – Vorsicht, Krake!';
-      return `Segle zur Schatzinsel ${leg / 2 + 1} (X)`;
+      return `Segle zur Schatzinsel ${leg / 2 + 1}`;
     };
 
     // ---------- Gegner & Gegenstände ----------
@@ -117,7 +123,23 @@ export default {
     }
     ctx.input.onPress(n => { if (n === 'a') fire(); });
     ctx.input.pad({ stick: true, a: 'Feuer' });
-    ctx.on(canvas, 'pointerdown', e => { if (!ctx.input.isTouch) fire(); });
+    // Touch: Finger im Spielfeld steuert. Gedrückt halten = Schiff folgt dem Finger, kurzer Tipp = Kurs setzen.
+    ctx.on(canvas, 'pointerdown', e => {
+      if (!touch) return fire();
+      const p = pos(e);
+      ptr = { id: e.pointerId, sx: p.x, sy: p.y, x0: p.x, y0: p.y, t: 0 };
+      try { canvas.setPointerCapture(e.pointerId); } catch {}
+    });
+    ctx.on(canvas, 'pointermove', e => { if (ptr && e.pointerId === ptr.id) { const p = pos(e); ptr.sx = p.x; ptr.sy = p.y; } });
+    const endPtr = e => {
+      if (!ptr || e.pointerId !== ptr.id) return;
+      if (e.type === 'pointerup' && ptr.t < 0.3 && Math.hypot(ptr.sx - ptr.x0, ptr.sy - ptr.y0) < 14 && !over) {
+        course = { x: cam.x + ptr.sx, y: cam.y + ptr.sy, t: 1.8 };
+        ring(course.x, course.y, 16, 'rgba(255,209,102,.9)');
+      }
+      ptr = null;
+    };
+    ctx.on(canvas, 'pointerup', endPtr); ctx.on(canvas, 'pointercancel', endPtr);
 
     function hurt(srcX, srcY) {
       if (ship.inv > 0 || ship.sink || over) return;
@@ -131,7 +153,7 @@ export default {
       else if (ship.hp === 2) ctx.toast('Autsch! Arrr!');
     }
     function sinkShip() {
-      ship.sink = 0.001; ctx.audio.sfx('boom'); endMusic();
+      ship.sink = 0.001; ptr = null; course = null; ctx.audio.sfx('boom'); endMusic();
       ctx.timeout(() => {
         over = true;
         const msg = raised === 0
@@ -150,16 +172,28 @@ export default {
       const ax = ctx.input.axis();
       let steer = 0, want = CRUISE, brake = false;
       if (dig) { want = 0; brake = true; }
-      else if (keys || !ctx.input.isTouch) {
+      else if (keys || !touch) {
+        if (keys) moved = true;
         steer = (ctx.input.down('right') ? 1 : 0) - (ctx.input.down('left') ? 1 : 0);
         if (ctx.input.down('up')) want = MAXSPD;
         if (ctx.input.down('down')) { want = 0; brake = true; }
       } else {
         const m = Math.hypot(ax.x, ax.y);
-        if (m > 0.2) {
-          const diff = wrap(Math.atan2(ax.y, ax.x) - ship.ang);
+        let dirA = null, mag = 0;
+        if (m > 0.2) { dirA = Math.atan2(ax.y, ax.x); mag = Math.min(1, m * 1.15); }
+        else if (ptr) {
+          const dx = cam.x + ptr.sx - ship.x, dy = cam.y + ptr.sy - ship.y, d = Math.hypot(dx, dy);
+          if (d > 14) { dirA = Math.atan2(dy, dx); mag = Math.max(0.55, Math.min(1, d / 80)); }
+        } else if (course) {
+          const dx = course.x - ship.x, dy = course.y - ship.y, d = Math.hypot(dx, dy);
+          course.t -= dt;
+          if (d < 18 || course.t <= 0) course = null; else { dirA = Math.atan2(dy, dx); mag = 1; }
+        }
+        if (dirA != null) {
+          moved = true;
+          const diff = wrap(dirA - ship.ang);
           steer = Math.max(-1, Math.min(1, diff * 2.4));
-          want = MAXSPD * Math.min(1, m * 1.15) * (Math.abs(diff) > 2 ? 0.45 : 1);
+          want = MAXSPD * mag * (Math.abs(diff) > 2 ? 0.45 : 1);
         } else { want = 0; }
       }
       const slow = inBank(map.banks, ship.x, ship.y);
@@ -293,7 +327,7 @@ export default {
       ctx.audio.sfx('level'); ctx.fx.shake(300);
       for (let i = 0; i < 10; i++) pickups.push({ x: te.x + rnd(-40, 40), y: te.y + rnd(-40, 40), type: 'coin', ph: rnd(0, TAU), drop: true });
       ctx.toast('Krake besiegt! Arrr!');
-      say('Der Krake taucht beleidigt ab. Jetzt schnell zum X buddeln!');
+      say('Der Krake taucht beleidigt ab. Jetzt schnell zur Insel und buddeln!');
     }
 
     function updateKraken(dt) {
@@ -373,6 +407,7 @@ export default {
           dig.isl.dug = true; raised++; addCoins(25, dig.isl.x, dig.isl.y);
           ctx.audio.sfx('coin'); ctx.toast(`Arrr! Schatz Nr. ${raised}!`);
           say(raised === 3 ? 'Der letzte Schatz! Jetzt heim in den Hafen!' : 'Ab nach Hause damit! Folge dem Pfeil zum Hafen.');
+          ctx.progress({ stars: raised, score: coins, text: raised === 3 ? 'Alle drei Truhen gehoben!' : `${raised} ${raised === 1 ? 'Schatz' : 'Schätze'} gehoben. Für den nächsten Stern: die nächste Schatzinsel finden.` });
           leg++; dig = null; hud();
         }
         return;
@@ -466,7 +501,7 @@ export default {
           prev = w;
         }
       }
-      for (const p of pickups) if (onScreen(p.x, p.y, 20)) drawPickup(g, p, time);
+      for (const p of pickups) if (onScreen(p.x, p.y, 24)) { g.save(); g.translate(p.x, p.y); g.scale(1.35, 1.35); g.translate(-p.x, -p.y); drawPickup(g, p, time); g.restore(); }
       for (const isl of map.islands) if (onScreen(isl.x, isl.y, isl.r * 1.3)) drawIsland(g, isl, time, tgt === isl);
       for (const r of map.rocks) if (onScreen(r.x, r.y, 30)) drawRock(g, r, time);
       if (cam.y + VH > LAND_Y - 200) drawHarbor(g, map, time, leg % 2 === 1);
@@ -534,27 +569,34 @@ export default {
       // Planken-Herzen
             for (let i = 0; i < HP; i++) drawPlankHeart(g, 18 + i * 22, 9, 18, i < ship.hp, 1 + (i === ship.hp - 1 ? heartPulse * 0.4 : 0) + (ship.hp === 1 && i === 0 ? Math.sin(time * 10) * 0.08 : 0));
       // Ziel
-      g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      const ob = objective(), tw = g.measureText(ob).width + 22;
-      g.fillStyle = 'rgba(11,20,55,.78)'; roundRect(VW / 2 - tw / 2, 34, tw, 22, 11); g.fill();
+      g.font = 'bold 14px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      const ob = objective(), tw = g.measureText(ob).width + 24;
+      g.fillStyle = 'rgba(11,20,55,.78)'; roundRect(VW / 2 - tw / 2, 34, tw, 26, 13); g.fill();
       g.strokeStyle = 'rgba(255,209,102,.6)'; g.lineWidth = 1.5; g.stroke();
-      g.fillStyle = C.gold; g.fillText(ob, VW / 2, 45.5);
+      g.fillStyle = C.gold; g.fillText(ob, VW / 2, 47.5);
       // Kraken-Leiste
       if (kraken.met && !kraken.beaten && leg === 4) {
         g.fillStyle = 'rgba(11,20,55,.8)'; roundRect(VW - 128, 8, 120, 18, 9); g.fill();
         g.fillStyle = C.violet; roundRect(VW - 125, 11, 114 * kraken.hp / kraken.max, 12, 6); g.fill();
-        g.fillStyle = '#fff'; g.font = 'bold 10px system-ui, sans-serif'; g.fillText('KRAKE', VW - 68, 17.5);
+        g.fillStyle = '#fff'; g.font = 'bold 12px system-ui, sans-serif'; g.fillText('KRAKE', VW - 68, 17.5);
       }
       // Banner
-      if (banner) {
-        if (banner.t > banner.ms) banner = null;
-        else {
+      const hintText = startHint ? (touch ? 'Stick ziehen oder ins Wasser tippen = segeln, Feuer = Kanonen' : 'Pfeiltasten = segeln (hoch = schneller), Leertaste = Kanonen') : null;
+      if (banner && banner.t > banner.ms) banner = null;
+      if (hintText) {
+        g.font = 'bold 15px system-ui, sans-serif';
+        const lines = wrapText(hintText, VW - 70), bh = lines.length * 20 + 16, by = 74;
+        g.fillStyle = 'rgba(244,236,216,.96)'; roundRect(22, by, VW - 44, bh, 10); g.fill();
+        g.strokeStyle = C.gold; g.lineWidth = 2.5; g.stroke();
+        g.fillStyle = '#3a2410'; lines.forEach((l, i) => g.fillText(l, VW / 2, by + 18 + i * 20));
+      } else if (banner) {
+        {
           const k = Math.min(1, banner.t * 5, (banner.ms - banner.t) * 4);
-          g.globalAlpha = k; g.font = 'bold 13px system-ui, sans-serif';
-          const lines = wrapText(banner.text, VW - 60); const bh = lines.length * 17 + 14;
+          g.globalAlpha = k; g.font = 'bold 14px system-ui, sans-serif';
+          const lines = wrapText(banner.text, VW - 60); const bh = lines.length * 18 + 14;
           const by = VH - 112 - bh; g.fillStyle = 'rgba(244,236,216,.95)'; roundRect(22, by, VW - 44, bh, 10); g.fill();
           g.strokeStyle = '#8a5a1e'; g.lineWidth = 2; g.stroke();
-          g.fillStyle = '#3a2410'; lines.forEach((l, i) => g.fillText(l, VW / 2, by + 15 + i * 17));
+          g.fillStyle = '#3a2410'; lines.forEach((l, i) => g.fillText(l, VW / 2, by + 16 + i * 18));
           g.globalAlpha = 1;
         }
       }
@@ -591,9 +633,8 @@ export default {
 
     // ---------- Schleife ----------
     hud();
-    ctx.toast('Leinen los! Arrr!');
-    say('Folge dem roten Pfeil zum X! Pfeil hoch = schneller.', 3200);
-    ctx.loop(dt => {
+        ctx.loop(dt => {
+      if (startHint) { startHint.t += dt; if ((moved && startHint.t > 0.6) || startHint.t > 14) { startHint = null; say('Folge dem roten Pfeil zur markierten Insel!', 3000); } }
       time += dt; grace -= dt; heartPulse = Math.max(0, heartPulse - dt * 2); if (banner) banner.t += dt; flashT = Math.max(0, flashT - dt); deliverFx = Math.max(0, deliverFx - dt);
       if (!over) {
         ship.inv = Math.max(0, ship.inv - dt); ship.cool -= dt;

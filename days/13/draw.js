@@ -4,7 +4,8 @@ import { HEROES, STAT_NAMES } from './heroes.js';
 
 export const VW = 360, VH = 560;
 export const SUPER_BTN = { x: VW - 42, y: VH - 46, r: 28 };
-export const cardRect = i => ({ x: 14, y: 128 + i * 128, w: VW - 28, h: 116 });
+export const cardRect = i => ({ x: 14, y: 98 + i * 102, w: VW - 28, h: 94 });
+export const START_BTN = { x: 24, y: VH - 112, w: VW - 48, h: 70 };
 const TAU = Math.PI * 2;
 const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
@@ -103,11 +104,11 @@ function drawBars(g, e, W) {
   g.fillStyle = 'rgba(8,14,40,.85)'; rr(g, x - 1.5, y - 1.5, w + 3, 8, 3); g.fill();
   g.fillStyle = '#ffffff'; g.fillRect(x, y, w * Math.max(0, e.ghost / e.maxHp), 5);
   g.fillStyle = e.isPlayer ? '#06d6a0' : '#ef476f'; g.fillRect(x, y, w * Math.max(0, e.hp / e.maxHp), 5);
-  txt(g, String(Math.ceil(e.hp)), e.x, y - 7, 9, '#ffffff', 'center', 'rgba(8,14,40,.95)', 800);
+  txt(g, String(Math.ceil(e.hp)), e.x, y - 9, 12, '#ffffff', 'center', 'rgba(8,14,40,.95)', 800);
   if (e.crystals > 0) {
     const cx = x - 7, cy = y + 2;
     g.fillStyle = '#c77dff'; g.beginPath(); g.moveTo(cx, cy - 6); g.lineTo(cx + 4.5, cy); g.lineTo(cx, cy + 6); g.lineTo(cx - 4.5, cy); g.closePath(); g.fill();
-    txt(g, String(e.crystals), cx, cy + 0.5, 7, '#ffffff', 'center', null, 900);
+    txt(g, String(e.crystals), cx - 8, cy + 0.5, 12, '#e9c9ff', 'right', 'rgba(8,14,40,.95)', 900);
   }
   if (e.isPlayer) {
     const sw = (w - 4) / 3;
@@ -317,7 +318,7 @@ function drawUI(g, W, S, visEnts) {
   const inStorm = P.alive && !W.over && Math.hypot(P.x - CX, P.y - CY) > W.ringR;
   if (inStorm) {
     g.strokeStyle = `rgba(142,202,230,${0.5 + 0.3 * Math.sin(t * 8)})`; g.lineWidth = 10; g.strokeRect(0, 0, VW, VH);
-    txt(g, 'Raus aus dem Sturm!', VW / 2, 92, 18, '#e3f6ff');
+    txt(g, 'Raus aus dem Sturm!', VW / 2, 112, 20, '#e3f6ff');
   }
   // Pfeile zu Gegnern außerhalb des Bildes
   for (const e of visEnts) {
@@ -353,17 +354,17 @@ function drawUI(g, W, S, visEnts) {
   if (W.t < 18) info = `Sturm in ${Math.ceil(18 - W.t)} s`;
   else if (W.ringPhase % 2 === 1) info = 'Sturm zieht zu';
   else info = 'Sturm macht Pause';
-  g.fillStyle = 'rgba(8,14,40,.7)'; rr(g, 8, 8, 122, 22, 8); g.fill();
-  txt(g, info, 69, 19.5, 11, '#8ecae6', 'center', null, 800);
+  g.fillStyle = 'rgba(8,14,40,.75)'; rr(g, 8, 8, 170, 30, 10); g.fill();
+  txt(g, info, 93, 23.5, 16, '#8ecae6', 'center', null, 800);
   W.feed.forEach((f, i) => {
     g.globalAlpha = Math.min(1, (4 - f.t) * 2);
-    txt(g, f.text, 10, 42 + i * 16, 11, f.color, 'left');
+    txt(g, f.text, 10, 54 + i * 17, 13, f.color, 'left');
   });
   g.globalAlpha = 1;
   // Unten: Würfe und Super
   if (P.alive) {
     g.fillStyle = 'rgba(8,14,40,.72)'; rr(g, 8, VH - 38, 128, 30, 10); g.fill();
-    txt(g, 'Würfe', 16, VH - 23, 11, '#ffffff', 'left', null);
+    txt(g, 'Würfe', 16, VH - 23, 12, '#ffffff', 'left', null);
     for (let i = 0; i < 3; i++) {
       const f = Math.max(0, Math.min(1, P.ammo - i)), x = 56 + i * 26;
       g.fillStyle = 'rgba(255,255,255,.15)'; rr(g, x, VH - 30, 22, 14, 4); g.fill();
@@ -374,8 +375,8 @@ function drawUI(g, W, S, visEnts) {
     g.fillStyle = ready ? `rgba(199,125,255,${0.75 + 0.25 * Math.sin(t * 8)})` : 'rgba(199,125,255,.25)';
     g.beginPath(); g.moveTo(B.x, B.y); g.arc(B.x, B.y, B.r, -Math.PI / 2, -Math.PI / 2 + TAU * P.sup); g.closePath(); g.fill();
     g.strokeStyle = ready ? '#ffffff' : '#c77dff'; g.lineWidth = 2.5; g.beginPath(); g.arc(B.x, B.y, B.r, 0, TAU); g.stroke();
-    txt(g, 'SUPER', B.x, B.y - 4, 11, '#ffffff', 'center', 'rgba(8,14,40,.8)');
-    txt(g, ready ? 'bereit!' : Math.floor(P.sup * 100) + '%', B.x, B.y + 9, 9, ready ? '#ffd166' : '#e9c9ff', 'center', 'rgba(8,14,40,.8)');
+    txt(g, 'SUPER', B.x, B.y - 6, 12, '#ffffff', 'center', 'rgba(8,14,40,.8)');
+    txt(g, ready ? 'bereit!' : Math.floor(P.sup * 100) + '%', B.x, B.y + 9, 12, ready ? '#ffd166' : '#e9c9ff', 'center', 'rgba(8,14,40,.8)');
   }
   // große Mitte-Meldungen
   let my2 = VH * 0.3;
@@ -389,32 +390,45 @@ function drawUI(g, W, S, visEnts) {
 }
 
 // ---------- Heldenwahl ----------
-export function drawSelect(g, S, stufe, pokale) {
+const PITCH = {
+  flocke: 'Flink und wendig, flitzt durch die Arena.',
+  brummer: 'Hält viel aus und wirft breit. Verzeiht Fehler.',
+  zapfen: 'Trifft aus weiter Ferne, hält aber wenig aus.',
+};
+function wrapTxt(g, s, maxW) {
+  const out = []; let cur = '';
+  for (const w of s.split(' ')) { const t = cur ? cur + ' ' + w : w; if (cur && g.measureText(t).width > maxW) { out.push(cur); cur = w; } else cur = t; }
+  if (cur) out.push(cur);
+  return out;
+}
+export function drawSelect(g, S, stufe, pokale, isTouch) {
   const t = S.t;
   g.fillStyle = '#0b1437'; g.fillRect(0, 0, VW, VH);
   g.fillStyle = 'rgba(255,255,255,.7)';
   for (const f of S.flakes) { g.beginPath(); g.arc(f.x, f.y, f.s, 0, TAU); g.fill(); }
-  txt(g, 'Schneeball-Arena', VW / 2, 40, 28 + Math.sin(t * 3) * 0.8, '#ffd166');
-  txt(g, `Stufe ${stufe} von 3   ·   Pokale: ${pokale}`, VW / 2, 74, 14, '#8ecae6', 'center', null, 700);
-  txt(g, 'Wähle deinen Helden', VW / 2, 104, 15, '#ffffff', 'center', null, 800);
+  txt(g, 'Schneeball-Arena', VW / 2, 36, 28 + Math.sin(t * 3) * 0.8, '#ffd166');
+  txt(g, `Stufe ${stufe} von 3  ·  Pokale: ${pokale}`, VW / 2, 66, 14, '#8ecae6', 'center', null, 700);
+  txt(g, 'Dein Held:', VW / 2, 86, 14, '#ffffff', 'center', null, 800);
   HEROES.forEach((h, i) => {
     const r = cardRect(i), sel = i === S.sel;
     g.fillStyle = sel ? '#22357a' : '#141f4d'; rr(g, r.x, r.y, r.w, r.h, 14); g.fill();
     g.strokeStyle = sel ? '#ffd166' : 'rgba(142,202,230,.35)'; g.lineWidth = sel ? 3 : 1.5; g.stroke();
     const e = { hero: h, r: h.r, x: 0, y: 0, fx: Math.sin(t * 1.2 + i) * 0.6, fy: 1, sup: sel ? 1 : 0, walkT: sel ? t : 0, throwT: 0, flash: 0, shieldT: 0, stunT: 0, dashT: 0, stompT: 0, color: '#ffd166', isPlayer: true };
-    g.save(); g.translate(r.x + 58, r.y + r.h / 2 + 4); g.scale(2.1, 2.1); drawHero(g, e, t); g.restore();
-    txt(g, h.name, r.x + 112, r.y + 22, 20, sel ? '#ffd166' : '#ffffff', 'left', null, 900);
-    txt(g, h.tag, r.x + 112, r.y + 41, 11.5, '#8ecae6', 'left', null, 600);
-    STAT_NAMES.forEach((s, k) => {
-      const y = r.y + 56 + k * 12;
-      txt(g, s, r.x + 112, y, 10, '#c9d6f5', 'left', null, 600);
-      for (let p = 0; p < 3; p++) { g.fillStyle = p < h.stats[k] ? '#06d6a0' : 'rgba(255,255,255,.15)'; rr(g, r.x + 180 + p * 18, y - 4, 15, 8, 3); g.fill(); }
-    });
-    txt(g, `Super: ${h.superName}`, r.x + 112, r.y + 94, 11.5, '#c77dff', 'left', null, 800);
-    txt(g, h.superText, r.x + 112, r.y + 107, 10, '#9fb0d8', 'left', null, 600);
+    g.save(); g.translate(r.x + 46, r.y + r.h / 2 + 4); g.scale(1.9, 1.9); drawHero(g, e, t); g.restore();
+    txt(g, h.name, r.x + 92, r.y + 24, 20, sel ? '#ffd166' : '#ffffff', 'left', null, 900);
+    if (h.key === 'brummer') {
+      g.fillStyle = '#06d6a0'; rr(g, r.x + r.w - 98, r.y + 10, 86, 20, 10); g.fill();
+      txt(g, 'Einsteiger', r.x + r.w - 55, r.y + 20.5, 13, '#0b1437', 'center', null, 900);
+    }
+    g.font = `700 13px ${FONT}`;
+    wrapTxt(g, PITCH[h.key], r.w - 92 - 12).forEach((l, k) => txt(g, l, r.x + 92, r.y + 50 + k * 18, 13, sel ? '#e3f6ff' : '#9fd3ee', 'left', null, 700));
   });
-  const blink = 0.6 + 0.4 * Math.sin(t * 4);
-  g.globalAlpha = blink;
-  txt(g, 'Antippen oder Leertaste: Los geht\'s!', VW / 2, VH - 22, 13, '#ffd166', 'center', null, 800);
-  g.globalAlpha = 1;
+  // Großer Start-Knopf
+  const B = START_BTN, pulse = 1 + Math.sin(t * 5) * 0.015;
+  g.save(); g.translate(B.x + B.w / 2, B.y + B.h / 2); g.scale(pulse, pulse);
+  g.fillStyle = '#b9791b'; rr(g, -B.w / 2, -B.h / 2 + 5, B.w, B.h, 18); g.fill();
+  g.fillStyle = '#ffd166'; rr(g, -B.w / 2, -B.h / 2, B.w, B.h, 18); g.fill();
+  txt(g, 'Kampf starten!', 0, -1, 30, '#1a1030', 'center', null, 900);
+  g.restore();
+  txt(g, isTouch ? 'Held antippen zum Wechseln' : 'Pfeiltasten wählen · Leertaste startet', VW / 2, VH - 22, 14, '#8ecae6', 'center', null, 700);
 }

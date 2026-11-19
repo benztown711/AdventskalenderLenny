@@ -5,10 +5,14 @@ import { createRenderer } from './render.js';
 import { createMusic } from './music.js';
 import { HERO, NUT, COIN } from './sprites.js';
 
-export const howto = 'Lauf mit ← → (oder A/D) und spring mit Leertaste oder ↑ – lange drücken springt höher. Auf dem Handy: Pfeile und „Sprung“. Hüpf Gegnern auf den Kopf, sammle goldene Nüsse und bring den Wichtel zum Tannenbaum!';
+export const howto = {
+  touch: 'Lauf mit den Pfeilen und spring mit „Sprung“ (lange drücken = höher). Hüpf Gegnern auf den Kopf und bring den Wichtel zum Tannenbaum.',
+  keys: 'Lauf mit den Pfeiltasten (oder A/D) und spring mit der Leertaste (lange drücken = höher). Hüpf Gegnern auf den Kopf und bring den Wichtel zum Tannenbaum.',
+};
+export const starsInfo = '★ Level 2 geschafft · ★★ Level 4 · ★★★ alle 5 Level';
 
 const VW = 320, VH = 400;          // Canvas (Logik-Pixel)
-const WV = 256, WH = 320, Z = 1.25; // sichtbarer Welt-Ausschnitt, 1,25-fach vergrößert
+const Z = 2, WV = VW / Z, WH = VH / Z; // sichtbarer Welt-Ausschnitt (160 x 200), 2-fach vergrößert
 const THEME_COL = { wald: ['#1f7a4d', '#eef5ff'], eis: ['#1b3263', '#8ecae6'], wolken: ['#3a2a7c', '#ffffff'], fabrik: ['#a85a33', '#fff3ee'], burg: ['#4b5274', '#ffd166'] };
 const starsFor = d => (d >= 5 ? 3 : d >= 4 ? 2 : d >= 2 ? 1 : 0);
 
@@ -25,25 +29,30 @@ export default {
     let nutsBest = ctx.load('nuts', [0, 0, 0, 0, 0]);
     if (!Array.isArray(nutsBest) || nutsBest.length !== 5) nutsBest = [0, 0, 0, 0, 0];
 
-    let mode = 'menu', sel = Math.min(done, 4), world = null, acc = 0, t = 0;
+    let mode = 'menu', sel = Math.min(done, 4), lockMsg = 0, lockTxt = '', world = null, acc = 0, t = 0;
     const cam = { x: 0, y: 0 };
     let total = 0, runNuts = 0, latchJ = false, look = 40, shake = 0;
     let banner = 0, phaseT = 0, cardSel = 0, card = null, endT = 0, menuShake = 0, flash = 0;
     let finished = false;
 
-    R.setTheme('wald');
-    music.play('menu');
     const hud = () => ctx.hud.set(world && mode === 'play'
       ? { Level: `${world.idx + 1}/5`, Punkte: total + world.score }
       : { Level: `${Math.min(done + 1, 5)}/5`, Punkte: total });
     hud();
 
     // ---------- Ablauf ----------
+    const camTargetY = () => {
+      const p = world.player, lo = 0, hi = world.lv.H * T - WH;
+      // Figur im unteren Drittel: bei Fall etwas weiter nach unten schauen
+      const down = world.phase === 'play' && !p.ground && p.vy > 160 ? 28 : 0;
+      return Math.max(lo, Math.min(hi, p.y + 7 + down - WH * 0.66));
+    };
     function startLevel(i) {
       world = createWorld(i); world.theme = LEVELS[i].theme;
       R.setLevel(world);
-      cam.y = world.lv.H * T - WH;
-      cam.x = Math.max(0, world.player.x - 100); look = 40;
+      look = 36;
+      cam.x = Math.max(0, world.player.x + 5 + look - WV / 2);
+      cam.y = camTargetY();
       mode = 'play'; acc = 0; latchJ = false; banner = 2.8; phaseT = 0; shake = 0; flash = 0;
       music.play(LEVELS[i].theme);
       sfx('swoosh'); hud();
@@ -55,6 +64,7 @@ export default {
       nutsBest[i] = Math.max(nutsBest[i] || 0, nuts); ctx.save('nuts', nutsBest);
       if (i === 4) { mode = 'ende'; endT = 0; music.play('ende'); R.setTheme('wald'); R.clearParts(); }
       else { mode = 'card'; cardSel = 0; phaseT = 0; card = { i, coins: world.coinsGot, coinsMax: world.lv.coins.length, nuts, score: world.score, stars: starsFor(done) }; music.play('menu'); sfx('power'); }
+      ctx.progress({ stars: starsFor(done), score: total, text: `Level ${done} von 5 geschafft.` });
       hud();
     }
     function finishGame() {
@@ -89,11 +99,11 @@ export default {
       }
     });
     function pickLevel(i) {
-      if (i > done) { menuShake = 0.3; sfx('bad'); ctx.toast(`Erst Level ${i} schaffen!`); return; }
+      if (i > done) { menuShake = 0.3; sfx('bad'); lockMsg = 2; lockTxt = i === done + 1 ? `ERST LEVEL ${done + 1} SCHAFFEN` : 'ERST DIE LEVEL DAVOR'; return; }
       sfx('click'); startLevel(i);
     }
     const LIST_Y = 148, LIST_H = 40, LIST_GAP = 46;
-    const CARD_BTN = [{ x: 40, y: 262, w: 240, h: 42 }, { x: 40, y: 312, w: 240, h: 36 }];
+    const CARD_BTN = [{ x: 30, y: 258, w: 260, h: 44 }, { x: 30, y: 310, w: 260, h: 38 }];
     const inside = (p, b) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
     ctx.on(canvas, 'pointerdown', e => {
       const p = pos(e);
@@ -122,7 +132,7 @@ export default {
           case 'hurt': sfx('hit'); shake = 5; R.burst('spark', e.x, e.y, 10, { c: '#ef476f', v: 80, life: 0.5, s: 2 }); break;
           case 'fall': sfx('bad'); break;
           case 'respawn': R.burst('spark', e.x + 5, e.y + 7, 12, { c: '#8ecae6', v: 50, life: 0.6 }); tone(660, 0.15, 'triangle', 0.1, 990); break;
-          case 'flag': [523, 659, 784].forEach((f, i) => tone(f, 0.12, 'square', 0.08, null, i * 0.07)); R.burst('spark', e.x, e.y, 14, { c: '#06d6a0', v: 70, life: 0.6, s: 2 }); ctx.toast('Fahne erreicht!', 1000); break;
+          case 'flag': [523, 659, 784].forEach((f, i) => tone(f, 0.12, 'square', 0.08, null, i * 0.07)); R.burst('spark', e.x, e.y, 14, { c: '#06d6a0', v: 70, life: 0.6, s: 2 }); if (banner <= 0) ctx.toast('Fahne erreicht!', 1000); break;
           case 'boing': tone(180, 0.28, 'sine', 0.2, 720); R.burst('dust', e.x, e.y, 6, { c: '#ffffff', v: 40, life: 0.4, s: 2 }); break;
           case 'crack': tone(300, 0.05, 'square', 0.05, 200); break;
           case 'crumble': tone(160, 0.12, 'triangle', 0.1, 60); R.burst('crumb', e.x, e.y, 10, { c: '#a8713a', v: 50, life: 0.8, g: 400, s: 2 }); break;
@@ -165,19 +175,23 @@ export default {
       if (world.gateOpen && world.boss) world.gateT = (world.gateT || 0) + dt * 0.7;
       const p = world.player;
       if (world.phase === 'play') {
-        look += (p.face * 44 - look) * Math.min(1, dt * 2);
+        look += (p.face * 36 - look) * Math.min(1, dt * 2);
         const tx = p.x + 5 + look - WV / 2;
         cam.x += (tx - cam.x) * Math.min(1, dt * 6);
+        cam.y += (camTargetY() - cam.y) * Math.min(1, dt * 5);
       } else if (world.phase === 'won') {
         cam.x += (world.lv.tree.x + 16 - WV / 2 - cam.x) * Math.min(1, dt * 2);
       }
       cam.x = Math.max(0, Math.min(world.lv.W * T - WV, cam.x));
+      cam.y = Math.max(0, Math.min(world.lv.H * T - WH, cam.y));
       if (banner > 0) banner -= dt;
       hud();
     }
 
     // ---------- Zeichnen ----------
     const txt = (s, x, y, o) => R.drawText(s, x, y, o);
+    // Text (Schrift 2 = 12 Logik-Pixel je Zeichen) in Zeilen von höchstens n Zeichen umbrechen
+    const wrap = (str, n) => { const out = []; let cur = ''; for (const w of String(str).split(' ')) { if (cur && (cur + ' ' + w).length > n) { out.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w; } if (cur) out.push(cur); return out; };
     function panel(x, y, w, h, border = '#ffd166') {
       g.fillStyle = 'rgba(8,10,34,.88)'; g.fillRect(x, y, w, h);
       g.fillStyle = border; g.fillRect(x, y, w, 2); g.fillRect(x, y + h - 2, w, 2); g.fillRect(x, y, 2, h); g.fillRect(x + w - 2, y, 2, h);
@@ -202,7 +216,7 @@ export default {
         const yy = 26 + Math.round(Math.max(0, Math.sin(t * 4 - i * 0.45)) * -5);
         txt(ch, x + i * 18, yy, { s: 3, c: i % 2 ? '#ffd166' : '#ef476f', sh: '#1a1030' });
       });
-      txt('EIN WICHTEL-ABENTEUER IN 5 LEVELN', VW / 2, 56, { s: 1, c: '#8ecae6', al: 'center' });
+      txt('WICHTEL-ABENTEUER', VW / 2, 56, { s: 2, c: '#8ecae6', al: 'center' });
       // Wichtel hüpft
       const hop = Math.abs(Math.sin(t * 3.2));
       drawHeroBig(VW / 2 - 27, 112 - hop * 30, 3, hop > 0.15 ? 'jump' : 'idle', false);
@@ -217,20 +231,21 @@ export default {
         const [c1, c2] = THEME_COL[L.theme];
         g.fillStyle = c1; g.fillRect(bx + 4, y + 4, 32, 32); g.fillStyle = c2; g.fillRect(bx + 4, y + 4, 32, 6);
         txt(String(i + 1), bx + 20, y + 13, { s: 2, c: '#ffffff', al: 'center' });
-        txt(L.name, bx + 46, y + 8, { s: 2, c: locked ? '#5b6280' : '#ffffff' });
+        txt(L.name, bx + 46, y + 4, { s: 2, c: locked ? '#5b6280' : '#ffffff' });
         if (locked) {
           g.fillStyle = '#5b6280'; g.fillRect(bx + 252, y + 18, 14, 11); g.fillStyle = '#0b1437'; g.fillRect(bx + 258, y + 21, 2, 5);
           g.strokeStyle = '#5b6280'; g.lineWidth = 2; g.beginPath(); g.arc(bx + 259, y + 17, 4, Math.PI, 0); g.stroke();
-          txt('GESPERRT', bx + 46, y + 26, { s: 1, c: '#5b6280' });
+          txt('GESPERRT', bx + 46, y + 22, { s: 2, c: '#5b6280' });
         } else {
           for (let k = 0; k < 3; k++) { g.globalAlpha = k < (nutsBest[i] || 0) ? 1 : 0.25; g.drawImage(R.sprite('nut', NUT), bx + 46 + k * 15, y + 23, 12, 12); }
           g.globalAlpha = 1;
-          if (i < done) txt('GESCHAFFT', bx + 274, y + 27, { s: 1, c: '#06d6a0', al: 'right' });
+          if (i < done) txt('GESCHAFFT', bx + 274, y + 22, { s: 2, c: '#06d6a0', al: 'right' });
         }
       }
       R.drawParticlesScreen(dt);
       if (menuShake > 0) menuShake -= dt;
-      txt(ctx.input.isTouch ? 'TIPPE AUF EIN LEVEL' : '< > WÄHLEN · LEERTASTE = START', VW / 2, VH - 14, { s: 1, c: '#ffd166', al: 'center' });
+      if (lockMsg > 0) { lockMsg -= dt; txt(lockTxt, VW / 2, VH - 22, { s: 2, c: '#ef476f', al: 'center' }); }
+      else txt(ctx.input.isTouch ? 'TIPPE AUF EIN LEVEL' : 'PFEILE + LEERTASTE', VW / 2, VH - 22, { s: 2, c: '#ffd166', al: 'center' });
     }
 
     function drawPlay(dt) {
@@ -242,24 +257,26 @@ export default {
       if (banner > 0 && world.phase === 'play') {
         const a = Math.min(1, banner * 2, (2.8 - banner) * 4);
         g.globalAlpha = a;
-        panel(30, 50, 260, 66, '#8ecae6');
-        txt(`LEVEL ${world.idx + 1}`, VW / 2, 60, { s: 2, c: '#ffd166', al: 'center' });
-        txt(LEVELS[world.idx].name, VW / 2, 78, { s: 2, c: '#ffffff', al: 'center' });
-        txt(LEVELS[world.idx].hint, VW / 2, 99, { s: 1, c: '#8ecae6', al: 'center' });
+        const hl = wrap(LEVELS[world.idx].hint, 24);
+        panel(16, 40, 288, 62 + hl.length * 18, '#8ecae6');
+        txt(`LEVEL ${world.idx + 1}`, VW / 2, 50, { s: 2, c: '#ffd166', al: 'center' });
+        txt(LEVELS[world.idx].name, VW / 2, 68, { s: 2, c: '#ffffff', al: 'center' });
+        hl.forEach((l, k) => txt(l, VW / 2, 92 + k * 18, { s: 2, c: '#8ecae6', al: 'center' }));
         g.globalAlpha = 1;
       }
       if (world.phase === 'fall') {
         const a = Math.min(1, phaseT >= 0 ? world.phaseT / 0.8 : 0);
         g.fillStyle = `rgba(11,20,55,${a * 0.9})`; g.fillRect(0, 0, VW, VH);
         txt('PLUMPS!', VW / 2, 160, { s: 3, c: '#8ecae6', al: 'center' });
-        txt('ZURÜCK ZUR FAHNE', VW / 2, 192, { s: 1, c: '#ffffff', al: 'center' });
+        txt('ZURÜCK ZUR FAHNE', VW / 2, 192, { s: 2, c: '#ffffff', al: 'center' });
       }
       if (world.phase === 'lost') {
         g.fillStyle = `rgba(11,20,55,${Math.min(0.85, phaseT)})`; g.fillRect(0, 0, VW, VH);
-        panel(30, 140, 260, 90, '#ef476f');
-        txt('HOPPLA!', VW / 2, 156, { s: 3, c: '#ef476f', al: 'center' });
-        txt('ALLE HERZEN WEG.', VW / 2, 190, { s: 1, c: '#ffffff', al: 'center' });
-        txt('DAS LEVEL STARTET NEU - DU SCHAFFST DAS!', VW / 2, 206, { s: 1, c: '#ffd166', al: 'center' });
+        panel(16, 130, 288, 130, '#ef476f');
+        txt('HOPPLA!', VW / 2, 144, { s: 3, c: '#ef476f', al: 'center' });
+        txt('ALLE HERZEN WEG.', VW / 2, 180, { s: 2, c: '#ffffff', al: 'center' });
+        txt('NEUER VERSUCH -', VW / 2, 208, { s: 2, c: '#ffd166', al: 'center' });
+        txt('DU SCHAFFST DAS!', VW / 2, 226, { s: 2, c: '#ffd166', al: 'center' });
       }
       if (world.phase === 'won') {
         const k = Math.min(1, phaseT * 2);
@@ -283,11 +300,10 @@ export default {
         txt('*', x, 172, { s: 3, c: on ? '#ffd166' : '#3a4270', al: 'center', sh: '#1a1030' });
       }
       const nextStar = card.stars === 0 ? 'LEVEL 2 = 1. STERN' : card.stars === 1 ? 'LEVEL 4 = 2. STERN' : card.stars === 2 ? 'LEVEL 5 = 3. STERN' : '';
-      txt(nextStar, VW / 2, 202, { s: 1, c: '#ffffff', al: 'center' });
-      txt(`ALS NÄCHSTES: ${LEVELS[card.i + 1].name}`, VW / 2, 222, { s: 1, c: '#c77dff', al: 'center' });
-      txt(LEVELS[card.i + 1].hint, VW / 2, 236, { s: 1, c: '#8ecae6', al: 'center' });
-      button(CARD_BTN[0], 'WEITER >', cardSel === 0, 2);
-      button(CARD_BTN[1], 'FERTIG FÜR HEUTE', cardSel === 1, 1);
+      txt(nextStar, VW / 2, 198, { s: 2, c: '#ffffff', al: 'center' });
+      txt(`NÄCHSTES: LEVEL ${card.i + 2}`, VW / 2, 224, { s: 2, c: '#c77dff', al: 'center' });
+      button(CARD_BTN[0], 'WEITER >', cardSel === 0, 3);
+      button(CARD_BTN[1], 'FERTIG FÜR HEUTE', cardSel === 1, 2);
       phaseT += dt;
     }
 
@@ -313,9 +329,13 @@ export default {
         txt(l, VW / 2, 22 + i * 18 + (1 - a) * 10, { s: 2, c: i === 0 ? '#ffd166' : i === 7 ? '#ef476f' : '#ffffff', al: 'center' });
       });
       g.globalAlpha = 1;
-      if (endT > 2.5) txt(ctx.input.isTouch ? 'TIPPEN = ENDE' : 'LEERTASTE = ENDE', VW / 2, VH - 22, { s: 1, c: Math.sin(t * 5) > 0 ? '#1a1030' : '#5b6280', al: 'center', sh: null });
+      if (endT > 2.5) txt(ctx.input.isTouch ? 'TIPPEN = ENDE' : 'LEERTASTE = ENDE', VW / 2, VH - 24, { s: 2, c: Math.sin(t * 5) > 0 ? '#1a1030' : '#5b6280', al: 'center', sh: null });
       if (endT > 12) finishGame();
     }
+
+    // Erster Start: sofort Level 1, die Levelauswahl gibt es erst nach dem ersten geschafften Level
+    if (done < 1) startLevel(0);
+    else { R.setTheme('wald'); music.play('menu'); }
 
     ctx.loop(dt => {
       t += dt;

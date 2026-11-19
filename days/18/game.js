@@ -1,7 +1,11 @@
 // Türchen 18: Farb-Leitungen (Verbinde-Rätsel mit Christbaumkugeln)
 import { generate, LEVELS } from './gen.js';
 
-export const howto = 'Zieh mit Finger oder Maus eine Leitung von einer Kugel zur gleichfarbigen und fülle dabei alle Felder. Tastatur: Pfeile bewegen, Leertaste nimmt eine Leitung auf und legt sie ab.';
+export const howto = {
+  touch: 'Zieh eine Leitung von einer Kugel zur Kugel mit gleichem Zeichen. Leitungen dürfen sich nicht kreuzen, und am Ende muss jedes Feld belegt sein.',
+  keys: 'Leertaste nimmt eine Leitung auf und legt sie ab, Pfeiltasten bewegen sie. Verbinde gleiche Kugeln ohne Kreuzung und belege jedes Feld.',
+};
+export const starsInfo = '★ 3 Level · ★★ 6 Level · ★★★ alle 10 Level';
 
 const W = 360, H = 560;
 const COLORS = ['#ef476f', '#ff8a3d', '#ffe066', '#06d6a0', '#4cc9f0', '#5b8cff', '#c77dff', '#f2f4ff'];
@@ -45,7 +49,8 @@ export default {
     const connected = p => { const q = paths[p]; return q.length > 1 && isEnd(p, q[0]) && q[q.length - 1] === partner(p, q[0]); };
     const nb = (a, b) => (Math.abs(a - b) === n) || (Math.abs(a - b) === 1 && ((a / n) | 0) === ((b / n) | 0));
     const filled = () => { let f = 0; for (let i = 0; i < T; i++) if (owner[i] >= 0) f++; return f; };
-    const pct = () => Math.floor(filled() * 100 / T);
+    const drawn = () => paths.reduce((a, q) => a + (q.length > 1 ? q.length : 0), 0); // nur gezogene Leitungen zählen
+    const pct = () => Math.floor(drawn() * 100 / T);
     const allConnected = () => pairs.every((_, p) => connected(p));
     const tone = (m, d, type, vol, delay = 0) => ctx.audio.tone(freq(m), d, type, vol, null, delay);
 
@@ -217,15 +222,17 @@ export default {
       pairs.forEach((pr, p) => tone(NOTES[pr.col] + 12, 1.0, 'triangle', 0.03, 0.05));
       ctx.audio.sfx('level');
       ctx.fx.shake(250);
+      const sm = summary(); if (sm.stars > 0) ctx.progress(sm);
     }
-    function finishGame() {
+    function summary() {
       const s = solvedCount(), st = starsFor(s);
       const need = s >= 10 ? '' : s >= 6 ? ' Für den dritten Stern fehlen noch ' + (10 - s) + ' Level.' : s >= 3 ? ' Für den zweiten Stern fehlen noch ' + (6 - s) + ' Level.' : ' Für den ersten Stern fehlen noch ' + (3 - s) + ' Level.';
-      ctx.finish({
+      return {
         won: st > 0, stars: st, score: s,
         text: s >= 10 ? 'Alle 10 Level gelöst - du bist ein Leitungs-Meister!' : 'Du hast ' + s + ' von 10 Leveln gelöst.' + need,
-      });
+      };
     }
+    function finishGame() { ctx.finish(summary()); }
 
     // ---------- Zeiger ----------
     ctx.on(canvas, 'pointerdown', e => {
@@ -350,17 +357,17 @@ export default {
       const press = pressed === i ? 2 : 0;
       g.save(); g.translate(0, press);
       rr(b.x, b.y, b.w, b.h, 12);
-      g.fillStyle = off ? 'rgba(255,255,255,.05)' : b.kind === 'big' ? 'rgba(255,209,102,.95)' : 'rgba(142,202,230,.16)'; g.fill();
-      g.lineWidth = isF ? 3 : 1.5; g.strokeStyle = isF ? GOLD : off ? 'rgba(255,255,255,.1)' : b.kind === 'big' ? '#ffe9ad' : 'rgba(142,202,230,.5)'; g.stroke();
+      g.fillStyle = off ? 'rgba(255,255,255,.09)' : b.kind === 'big' ? 'rgba(255,209,102,.95)' : 'rgba(142,202,230,.16)'; g.fill();
+      g.lineWidth = isF ? 3 : 1.5; g.strokeStyle = isF ? GOLD : off ? 'rgba(170,182,224,.45)' : b.kind === 'big' ? '#ffe9ad' : 'rgba(142,202,230,.5)'; g.stroke();
       if (b.kind === 'tile') {
         const done = solved[b.i], L = LEVELS[b.i];
-        text('Level ' + (b.i + 1), b.x + 14, b.y + 24, 18, off ? '#6f7aa6' : '#fff', 'left');
-        text(L.n + '×' + L.n + ' · ' + L.k + ' Farben', b.x + 14, b.y + 46, 12.5, off ? '#55608c' : '#a9c6e6', 'left', 'normal');
+        text('Level ' + (b.i + 1), b.x + 14, b.y + 24, 18, off ? '#aab6e0' : '#fff', 'left');
+        text(off ? 'Erst Level ' + b.i + ' lösen' : L.n + '×' + L.n + ' · ' + L.k + ' Farben', b.x + 14, b.y + 46, 13, off ? '#9fb0d8' : '#a9c6e6', 'left', 'normal');
         if (done) { g.fillStyle = '#06d6a0'; g.beginPath(); g.arc(b.x + b.w - 24, b.y + b.h / 2, 13, 0, 6.283); g.fill(); g.strokeStyle = '#0b1437'; g.lineWidth = 3; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(b.x + b.w - 30, b.y + b.h / 2); g.lineTo(b.x + b.w - 25, b.y + b.h / 2 + 5); g.lineTo(b.x + b.w - 17, b.y + b.h / 2 - 5); g.stroke(); }
-        else if (off) { const lx = b.x + b.w - 24, ly = b.y + b.h / 2; g.fillStyle = '#55608c'; rr(lx - 8, ly - 3, 16, 12, 3); g.fill(); g.strokeStyle = '#55608c'; g.lineWidth = 2.5; g.beginPath(); g.arc(lx, ly - 3, 5, 3.14, 0); g.stroke(); }
+        else if (off) { const lx = b.x + b.w - 24, ly = b.y + b.h / 2; g.fillStyle = '#aab6e0'; rr(lx - 8, ly - 3, 16, 12, 3); g.fill(); g.strokeStyle = '#aab6e0'; g.lineWidth = 2.5; g.beginPath(); g.arc(lx, ly - 3, 5, 3.14, 0); g.stroke(); }
       } else {
         const lbl = b.label + (b.sub ? ' (' + b.sub() + ')' : '');
-        text(lbl, b.x + b.w / 2, b.y + b.h / 2 + 1, b.kind === 'big' ? 18 : 15, off ? '#55608c' : b.kind === 'big' ? '#0b1437' : '#e6f1ff');
+        text(lbl, b.x + b.w / 2, b.y + b.h / 2 + 1, b.kind === 'big' ? 18 : 15, off ? '#8f9bc9' : b.kind === 'big' ? '#0b1437' : '#e6f1ff');
       }
       g.restore();
     }
@@ -444,8 +451,8 @@ export default {
       else msg = conn + ' von ' + pairs.length + ' Paaren verbunden';
       text(msg, W / 2, 420, 15, msg === 'Geschafft!' ? '#06d6a0' : '#cfe3ff');
       btns.forEach(drawButton);
-      if (!ctx.input.isTouch) text('Pfeile: Cursor · Leertaste: Leitung aufnehmen/ablegen · T: Tipp', W / 2, 520, 11.5, '#7f8fc4', 'center', 'normal');
-      else text('Zieh von Kugel zu Kugel. Alle Felder füllen!', W / 2, 520, 12.5, '#7f8fc4', 'center', 'normal');
+      if (!ctx.input.isTouch) text('Pfeile: Cursor · Leertaste: Leitung aufnehmen/ablegen · T: Tipp', W / 2, 520, 12.5, '#9aa8d6', 'center', 'normal');
+      else text('Zieh von Kugel zu Kugel. Alle Felder füllen!', W / 2, 520, 13, '#9aa8d6', 'center', 'normal');
     }
 
     function drawMenu() {
@@ -454,8 +461,8 @@ export default {
       btns.forEach(drawButton);
       const s = solvedCount();
       const nxt = s >= 10 ? 'Alle drei Sterne geschafft!' : 'Sterne: 3 Level = ★, 6 = ★★, alle 10 = ★★★';
-      text(nxt, W / 2, 508 + 0, 12.5, '#a9c6e6', 'center', 'normal');
-      if (!ctx.input.isTouch) text('Pfeile wählen, Leertaste öffnet', W / 2, 534, 11.5, '#7f8fc4', 'center', 'normal');
+      text(nxt, W / 2, 508 + 0, 13, '#a9c6e6', 'center', 'normal');
+      if (!ctx.input.isTouch) text('Pfeile wählen, Leertaste öffnet', W / 2, 534, 12.5, '#9aa8d6', 'center', 'normal');
     }
 
     function drawPanel() {
