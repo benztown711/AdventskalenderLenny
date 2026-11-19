@@ -26,3 +26,16 @@
 - Die Start-Karte zeigt die Anleitung passend zum Gerät (Touch oder Tastatur) und eine Zeile "So gibt es Sterne".
 - Ab dem 24. zeigt der Kalender eine Abschluss-Zeile mit dem Sternestand. Hinweis, dass Sterne nur auf diesem Gerät gespeichert sind.
 - Bei "Bewegung reduzieren" entfallen Schnee, Wackeln und der größte Teil des Konfettis.
+
+### Anforderung: Zahlenschloss und Knobel-Ecke
+- Ein neues Türchen (noch nie gespielt, Schloss noch nicht geknackt) zeigt beim Antippen ein Zahlenschloss mit einem Rätsel. Die Lösung ist der Code. Danach öffnet das Türchen sich wie gewohnt und bleibt ohne Schloss.
+- Rätsel auf Niveau Klasse 4 in drei Stufen (Leicht, Mittel, Knifflig) und vier Fächern (Mix, Rechnen, Deutsch, Wissen). Die Wahl bleibt gespeichert.
+  - Rechnen: Kopfrechnen, Bilder-Rätsel (Symbole stehen für Zahlen), Zahlenfolgen, Rechenmauern, Sachaufgaben.
+  - Deutsch: Wortarten zählen, Groß- und Kleinschreibfehler zählen, Wörterschlange (Wörter, Leerzeichen, Großschreibung), Silben, ABC, Buchstaben zählen.
+  - Wissen: Allgemeinwissen mit Zahlen-Antwort, auch kombiniert mit Rechnen (z. B. Beine von 3 Spinnen und 2 Hühnern).
+- Alle Rätsel werden aus Vorlagen erzeugt und sind garantiert lösbar. Prüfung: `node tools/raetsel-test.mjs` (mit `--zeigen` für Beispiele).
+- Zwei Tipps, danach der Lösungsweg. So bleibt kein Kind vor einem Türchen hängen. "Anderes Rätsel" tauscht jederzeit.
+- Knobel-Punkte: Leicht 1, Mittel 2, Knifflig 3, je Tipp einer weniger (mindestens 1), mit Lösungsweg 0. Höchstens 72.
+- Direktlinks auf neue Türchen führen erst zum Schloss. Die Eltern-Vorschau zeigt das Schloss beim Antippen mit "Überspringen", Direktlinks öffnen dort ohne Schloss.
+- Knobel-Ecke im Kalender-Kopf: freies Üben mit Serie und Rekord, ohne Einfluss auf Türchen.
+- Bedienung: Zahlenfeld auf dem Bildschirm, am Rechner auch Zifferntasten, Enter, Rücktaste und Esc.

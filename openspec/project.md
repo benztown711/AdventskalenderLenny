@@ -19,9 +19,11 @@ und Vorfreude auf das nächste wecken.
 |---|---|
 | `index.html`, `css/style.css`, `js/app.js` | Kalender-Ansicht mit 24 Türchen |
 | `js/core/` | Zeitsperre, Speicher, Ton, Steuerung, Effekte, Spiel-Rahmen |
+| `js/core/raetsel.js`, `js/core/schloss.js` | Knobel-Rätsel (Rechnen, Deutsch, Wissen) und Zahlenschloss vor neuen Türchen |
 | `js/days.js` | Liste der 24 Türchen (Titel, Emoji, Teaser) |
 | `days/NN/game.js` | Je ein Spiel pro Türchen, siehe `specs/spiel-vertrag.md` |
 | `tools/smoke.mjs` | Automatischer Rauchtest aller Türchen (Desktop und Handy) |
+| `tools/raetsel-test.mjs` | Prüft tausende erzeugte Rätsel auf gültige Lösungen und Texte |
 
 ## Eltern-Vorschau
 `?vorschau=rentier` öffnet alle Türchen, `?vorschau=rentier&heute=5` simuliert den 5. Dezember.

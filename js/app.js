@@ -4,6 +4,7 @@ import { audio } from './core/audio.js';
 import { fx } from './core/fx.js';
 import { syncTime, unlockedDay, secondsToNext, isPreview } from './core/time.js';
 import { openDay, closeDay } from './core/shell.js';
+import { openLock, closeLock, needsLock } from './core/schloss.js';
 
 const view = document.getElementById('view');
 const ORDER = [7, 18, 3, 22, 11, 1, 15, 24, 9, 5, 20, 13, 2, 17, 8, 23, 12, 6, 19, 4, 21, 10, 16, 14];
@@ -33,8 +34,10 @@ function renderCalendar() {
         <p class="sub">24 Türchen · 24 Überraschungen</p>
         <div class="cal-stats">
           <span class="chip big">⭐ <b>${store.totalStars()}</b> / 72</span>
+          <span class="chip big" title="Für jedes geknackte Zahlenschloss gibt es Knobel-Punkte">🧠 <b id="kp">${store.knobelPoints()}</b> Knobel-Punkte</span>
           <button class="chip big" id="mute">${audio.muted ? '🔇 Ton aus' : '🔊 Ton an'}</button>
         </div>
+        <button class="knobel-btn" id="knobel">🧩 Knobel-Ecke <span>Rätsel zum Üben</span></button>
       </header>
       <div class="grid">${ORDER.map(n => {
         const m = DAYS[n - 1], d = store.day(n);
@@ -48,7 +51,7 @@ function renderCalendar() {
           ${state === 'ready' ? `<span class="door-new${isToday ? ' heute' : ''}">${isToday ? 'HEUTE' : 'NEU!'}</span>` : ''}
         </button>`;
       }).join('')}</div>
-      <footer class="cal-foot"><div id="count"></div><div class="foot-note">Jedes Türchen bringt bis zu 3 Sterne. Sie bleiben auf diesem Gerät gespeichert.</div>${isPreview() ? '<div class="preview">Vorschau-Modus</div>' : ''}</footer>
+      <footer class="cal-foot"><div id="count"></div><div class="foot-note">Jedes neue Türchen hat ein Zahlenschloss: Knack das Rätsel, dann geht es auf. Jedes Türchen bringt bis zu 3 Sterne. Alles bleibt auf diesem Gerät gespeichert.</div>${isPreview() ? '<div class="preview">Vorschau-Modus</div>' : ''}</footer>
     </div>`;
   const count = view.querySelector('#count');
   const tick = () => {
@@ -74,18 +77,41 @@ function renderCalendar() {
       calToast(unlockedDay() === 0 ? `🔒 Geduld! Türchen ${n} öffnet am ${n}. Dezember.` : `🔒 Türchen ${n}: noch ${days} mal schlafen!`);
       return;
     }
-    audio.sfx(door.classList.contains('ready') ? 'power' : 'click');
-    door.classList.add('opening');
-    setTimeout(() => { location.hash = '#/' + n; }, door.classList.contains('ready') ? 650 : 250);
+    const go = () => {
+      audio.sfx(door.classList.contains('ready') ? 'power' : 'click');
+      door.classList.add('opening');
+      setTimeout(() => { location.hash = '#/' + n; }, door.classList.contains('ready') ? 650 : 250);
+    };
+    if (needsLock(n, store.isPlayed(n))) { audio.sfx('click'); showLock(n, go); return; }
+    go();
   };
+  view.querySelector('#knobel').onclick = () => { audio.unlock(); audio.sfx('click'); openLock({ practice: true }); };
+}
+
+function showLock(n, go) {
+  openLock({
+    day: n, preview: isPreview(),
+    onOpen: () => { const d = view.querySelector(`.door[data-n="${n}"]`); if (d) go(); else location.hash = '#/' + n; },
+    onClose: solved => { if (solved) { const pts = view.querySelector('#kp'); if (pts) pts.textContent = store.knobelPoints(); } },
+  });
 }
 
 function route() {
-  clearInterval(tickId);
+  clearInterval(tickId); closeLock();
   const m = location.hash.match(/^#\/(\d{1,2})$/);
   const n = m ? +m[1] : 0;
   if (n >= 1 && n <= 24 && n <= unlockedDay()) { document.body.classList.add('in-game'); openDay(n, view, goHome); }
   else { document.body.classList.remove('in-game'); if (m) history.replaceState(null, '', location.pathname + location.search); renderCalendar(); }
+}
+// Direktlink auf ein neues Türchen: erst das Zahlenschloss (außer in der Eltern-Vorschau)
+function routeGuard() {
+  const m = location.hash.match(/^#\/(\d{1,2})$/), n = m ? +m[1] : 0;
+  if (n >= 1 && n <= 24 && n <= unlockedDay() && !isPreview() && needsLock(n, store.isPlayed(n))) {
+    history.replaceState(null, '', location.pathname + location.search);
+    route(); showLock(n, () => { location.hash = '#/' + n; });
+    return;
+  }
+  route();
 }
 
 // Schneefall im Hintergrund
@@ -109,5 +135,5 @@ function route() {
   })(last);
 })();
 
-addEventListener('hashchange', route);
-syncTime().finally(route);
+addEventListener('hashchange', routeGuard);
+syncTime().finally(routeGuard);
